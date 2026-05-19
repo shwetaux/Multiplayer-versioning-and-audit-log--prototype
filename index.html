@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Reactor — Spotlight Multiplayer</title>
+<style>
+  :root {
+    --bg:#fff; --canvas-bg:#fafafa; --dot:#d8d8d8; --border:#e6e6e6;
+    --text:#1a1a1a; --muted:#8a8a8a; --accent:#ff5b2e;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; color:var(--text); }
+  body { background:var(--bg); }
+
+  .topbar { height:48px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 12px; gap:16px; background:#fff; position:relative; z-index:30; }
+  .logo { width:26px; height:26px; background:var(--accent); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:14px; }
+  .brand { font-weight:600; font-size:14px; }
+  .tabs { display:flex; gap:4px; margin-left:8px; }
+  .tab { padding:6px 10px; font-size:13px; color:var(--muted); border-radius:6px; cursor:pointer; }
+  .tab.active { color:var(--text); background:#f2f2f2; }
+  .tab:hover:not(.active) { background:#f7f7f7; }
+  .topbar-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
+  .saved { font-size:12px; color:var(--muted); }
+
+  .avatar-stack { display:flex; }
+  .avatar { width:26px; height:26px; border-radius:50%; border:2px solid #fff; margin-left:-6px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:600; cursor:pointer; position:relative; transition:transform .2s, opacity .3s; }
+  .avatar:first-child { margin-left:0; }
+  .avatar:hover { transform:translateY(-2px); z-index:5; }
+  .avatar.live::after { content:''; position:absolute; bottom:-1px; right:-1px; width:8px; height:8px; background:#10b981; border:2px solid #fff; border-radius:50%; }
+  .avatar.entering { animation:avatarIn .35s ease-out; }
+  @keyframes avatarIn { from { opacity:0; transform:scale(0.5); } to { opacity:1; transform:scale(1); } }
+
+  .spotlight-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; background:#1a1a1a; color:#fff; border-radius:18px; font-size:12px; font-weight:500; cursor:pointer; border:none; transition:background .2s; }
+  .spotlight-btn.active { background:var(--accent); }
+  .spotlight-btn .dot { width:8px; height:8px; background:#fff; border-radius:50%; }
+  .spotlight-btn.pulse { box-shadow:0 0 0 0 rgba(255,91,46,.6); animation:pulse 1.4s infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,91,46,.6);} 70%{box-shadow:0 0 0 12px rgba(255,91,46,0);} 100%{box-shadow:0 0 0 0 rgba(255,91,46,0);} }
+
+  .icon-btn { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; color:var(--muted); background:transparent; border:none; }
+  .icon-btn:hover { background:#f2f2f2; color:var(--text); }
+  .icon-btn svg { width:16px; height:16px; }
+
+  .main { position:relative; width:100%; height:calc(100vh - 48px); overflow:hidden; background:var(--canvas-bg); }
+  .search-bar { position:absolute; top:16px; left:16px; z-index:20; width:360px; height:36px; background:#fff; border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; padding:0 12px; gap:8px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .search-bar input { flex:1; border:none; outline:none; font-size:13px; background:transparent; }
+  .search-bar input::placeholder { color:var(--muted); }
+
+  .canvas-viewport { position:absolute; inset:0; overflow:hidden; }
+  .canvas { position:absolute; width:3000px; height:2000px; left:50%; top:50%; transform:translate(-50%,-50%); background-image:radial-gradient(circle,var(--dot) 1px,transparent 1px); background-size:20px 20px; transition:transform 1s cubic-bezier(0.22,1,0.36,1); }
+  .canvas svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+
+  .node { position:absolute; width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,#f0f0f0,#d8d8d8); border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.08); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .2s, box-shadow .3s; }
+  .node:hover { transform:scale(1.05); }
+  .node.main-node { width:80px; height:80px; background:radial-gradient(circle,#fff 0%,#ffd8c4 60%,var(--accent) 100%); }
+  .node-label { position:absolute; top:100%; left:50%; transform:translate(-50%,6px); font-size:10px; color:var(--muted); white-space:nowrap; font-family:ui-monospace,"SF Mono",Menlo,monospace; }
+  .node-eth { position:absolute; bottom:100%; left:50%; transform:translate(-50%,-4px); font-size:9px; background:#fff; padding:1px 5px; border-radius:8px; border:1px solid var(--border); white-space:nowrap; }
+  .node.selected-by-user { box-shadow:0 0 0 3px var(--user-color,#3b82f6),0 2px 8px rgba(0,0,0,.08); }
+  .edge-label { position:absolute; background:#fff; border:1px solid var(--border); border-radius:8px; padding:2px 6px; font-size:10px; transform:translate(-50%,-50%); pointer-events:none; }
+
+  .cursor { position:absolute; pointer-events:none; z-index:100; transition:transform 1.4s cubic-bezier(0.22,1,0.36,1), opacity .35s; opacity:0; will-change:transform; }
+  .cursor.visible { opacity:1; }
+  .cursor svg { display:block; }
+  .cursor-label { margin-top:4px; margin-left:12px; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:500; color:#fff; white-space:nowrap; display:inline-block; }
+
+  .spotlight-panel { position:absolute; top:56px; right:16px; width:280px; background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12); z-index:50; overflow:hidden; transform-origin:top right; animation:panelIn .18s ease-out; }
+  @keyframes panelIn { from { opacity:0; transform:scale(0.95) translateY(-4px); } to { opacity:1; transform:scale(1) translateY(0); } }
+  .panel-header { padding:12px 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  .panel-title { font-size:13px; font-weight:600; }
+  .panel-toggle { background:#1a1a1a; color:#fff; border:none; padding:4px 10px; border-radius:12px; font-size:11px; cursor:pointer; }
+  .panel-toggle.on { background:var(--accent); }
+  .panel-section { padding:8px 0; }
+  .panel-section-title { padding:6px 14px; font-size:11px; color:var(--muted); font-weight:500; }
+  .user-row { display:flex; align-items:center; gap:10px; padding:8px 14px; cursor:pointer; transition:background .1s; position:relative; }
+  .user-row:hover { background:#f7f7f7; }
+  .user-row.active { background:#fff5f0; }
+  .user-row .avatar { margin:0; width:28px; height:28px; font-size:11px; border:none; }
+  .user-row .user-info { flex:1; }
+  .user-row .user-name { font-size:13px; font-weight:500; }
+  .user-row .user-meta { font-size:11px; color:var(--muted); }
+  .user-row .following-badge { font-size:10px; color:var(--accent); font-weight:500; }
+  .user-row.dim { opacity:.55; }
+  .user-row.highlight { animation:rowGlow 1.4s ease-in-out infinite; }
+  @keyframes rowGlow { 0%,100% { background:#fff5f0; } 50% { background:#ffe0d0; } }
+
+  .spotlight-frame { position:absolute; inset:0; pointer-events:none; z-index:25; border:3px solid transparent; transition:border-color .3s; }
+  .spotlight-frame.active { border-color:var(--user-color,var(--accent)); }
+  .spotlight-banner { position:absolute; top:12px; left:50%; transform:translateX(-50%); background:var(--user-color,var(--accent)); color:#fff; padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500; z-index:26; display:none; align-items:center; gap:8px; box-shadow:0 2px 8px rgba(0,0,0,.15); }
+  .spotlight-banner.show { display:flex; }
+  .spotlight-banner button { background:rgba(255,255,255,.25); border:none; color:#fff; padding:2px 8px; border-radius:10px; font-size:11px; cursor:pointer; }
+
+  /* Click-through scene controller */
+  .scene-controller { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); z-index:200; display:flex; align-items:center; gap:12px; background:#1a1a1a; color:#fff; padding:10px 14px; border-radius:24px; box-shadow:0 6px 24px rgba(0,0,0,.2); font-size:13px; }
+  .scene-controller .scene-text { max-width:380px; }
+  .scene-controller .scene-counter { font-size:11px; color:#888; padding:2px 8px; background:rgba(255,255,255,.08); border-radius:10px; }
+  .scene-controller button { background:var(--accent); color:#fff; border:none; padding:6px 14px; border-radius:16px; font-size:12px; font-weight:500; cursor:pointer; }
+  .scene-controller button:hover { background:#e84d20; }
+  .scene-controller button.secondary { background:rgba(255,255,255,.1); }
+  .scene-controller button.secondary:hover { background:rgba(255,255,255,.18); }
+
+  .highlight-ring { position:absolute; pointer-events:none; border:2px solid var(--accent); border-radius:50%; animation:ringPulse 1.4s ease-out infinite; z-index:150; }
+  @keyframes ringPulse { 0% { transform:scale(.9); opacity:1; } 100% { transform:scale(1.6); opacity:0; } }
+
+  .tooltip { position:absolute; background:#1a1a1a; color:#fff; padding:4px 8px; border-radius:4px; font-size:11px; pointer-events:none; transform:translate(-50%,-120%); white-space:nowrap; opacity:0; transition:opacity .15s; z-index:200; }
+  .tooltip.show { opacity:1; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="logo">R</div>
+    <div class="brand">Reactor</div>
+    <div class="tabs">
+      <div class="tab">Cases</div>
+      <div class="tab active">Graphs</div>
+      <div class="tab">Community</div>
+      <div class="tab">Labs</div>
+      <div class="tab">Phases</div>
+      <div class="tab">Tools</div>
+    </div>
+    <div class="topbar-right">
+      <div class="saved">Edited 2 mins ago</div>
+      <div class="avatar-stack" id="avatarStack"></div>
+      <button class="spotlight-btn" id="spotlightBtn">
+        <span class="dot"></span>
+        <span id="spotlightBtnLabel">Spotlight me</span>
+      </button>
+      <button class="icon-btn" title="Comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+      <button class="icon-btn" title="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+      <button class="icon-btn" title="More"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
+    </div>
+  </div>
+
+  <div class="main" id="main">
+    <div class="search-bar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8a8a" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input placeholder="Search for cluster names, addresses..." />
+    </div>
+    <div class="canvas-viewport" id="viewport">
+      <div class="canvas" id="canvas"><svg id="edges"></svg></div>
+    </div>
+    <div class="spotlight-frame" id="spotlightFrame"></div>
+    <div class="spotlight-banner" id="spotlightBanner">
+      <span id="spotlightBannerText">Following Tom Martin</span>
+      <button id="exitSpotlight">Exit</button>
+    </div>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="scene-controller" id="sceneCtl">
+      <span class="scene-counter" id="sceneCounter">1 / 8</span>
+      <span class="scene-text" id="sceneText">You're alone on this graph. Click Next to see what happens when teammates join.</span>
+      <button class="secondary" id="prevBtn">Back</button>
+      <button id="nextBtn">Next →</button>
+    </div>
+  </div>
+
+<script>
+const users = [
+  { id:'tom',  name:'Tom Martin', color:'#ef4444', initials:'TM' },
+  { id:'adam', name:'Adam H',     color:'#3b82f6', initials:'AH' },
+  { id:'sara', name:'Sara Chen',  color:'#10b981', initials:'SC' },
+  { id:'mike', name:'Mike Lopez', color:'#8b5cf6', initials:'ML' },
+  { id:'kira', name:'Kira Patel', color:'#f59e0b', initials:'KP' },
+];
+const currentUser = { id:'you', name:'You', color:'#ff5b2e', initials:'Y' };
+
+const nodes = [
+  { id:'n0', x:600,  y:950,  label:'0xMain...A1c2', main:true },
+  { id:'n1', x:1100, y:750,  label:'0xA9bB...69Fc', eth:'1.2 ETH' },
+  { id:'n2', x:1100, y:950,  label:'0x33cD...22Ab', eth:'0.8 ETH' },
+  { id:'n3', x:1100, y:1150, label:'0x5e7A...88De', eth:'2.4 ETH' },
+  { id:'n4', x:1550, y:750,  label:'0xBb12...10AC', eth:'0.6 ETH' },
+  { id:'n5', x:1550, y:950,  label:'0xGfCa...60D2', eth:'1.1 ETH' },
+  { id:'n6', x:1550, y:1150, label:'0xKa3B...05a1', eth:'0.5 ETH' },
+];
+const edges = [
+  { from:'n0', to:'n1', label:'1.2 ETH' },
+  { from:'n0', to:'n2', label:'0.8 ETH' },
+  { from:'n0', to:'n3', label:'2.4 ETH' },
+  { from:'n1', to:'n4', label:'0.6 ETH' },
+  { from:'n2', to:'n5', label:'1.1 ETH' },
+  { from:'n3', to:'n6', label:'0.5 ETH' },
+];
+
+const canvas = document.getElementById('canvas');
+const edgesSvg = document.getElementById('edges');
+const main = document.getElementById('main');
+function getNode(id) { return nodes.find(n => n.id === id); }
+
+(function renderGraph() {
+  edgesSvg.setAttribute('viewBox', '0 0 3000 2000');
+  edgesSvg.innerHTML = edges.map(e => {
+    const a = getNode(e.from), b = getNode(e.to);
+    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#c8c8c8" stroke-width="1.5"/>`;
+  }).join('');
+  edges.forEach(e => {
+    const a = getNode(e.from), b = getNode(e.to);
+    const lbl = document.createElement('div');
+    lbl.className = 'edge-label';
+    lbl.style.left = ((a.x + b.x)/2) + 'px';
+    lbl.style.top = ((a.y + b.y)/2) + 'px';
+    lbl.textContent = e.label;
+    canvas.appendChild(lbl);
+  });
+  nodes.forEach(n => {
+    const el = document.createElement('div');
+    el.className = 'node' + (n.main ? ' main-node' : '');
+    el.style.left = (n.x - 32) + 'px';
+    el.style.top = (n.y - 32) + 'px';
+    el.dataset.id = n.id;
+    if (n.eth) { const eth = document.createElement('div'); eth.className='node-eth'; eth.textContent=n.eth; el.appendChild(eth); }
+    const lbl = document.createElement('div'); lbl.className='node-label'; lbl.textContent=n.label; el.appendChild(lbl);
+    canvas.appendChild(el);
+  });
+})();
+
+// ============== AVATARS ==============
+const avatarStack = document.getElementById('avatarStack');
+const tooltip = document.getElementById('tooltip');
+const visibleUserIds = new Set(['you']);
+
+function renderAvatars() {
+  avatarStack.innerHTML = '';
+  const order = users.filter(u => visibleUserIds.has(u.id)).concat([currentUser]);
+  order.forEach(u => {
+    const a = document.createElement('div');
+    a.className = 'avatar entering' + (u.id !== 'you' ? ' live' : '');
+    a.style.background = u.color;
+    a.textContent = u.initials;
+    a.dataset.id = u.id;
+    a.addEventListener('mouseenter', () => {
+      const r = a.getBoundingClientRect();
+      tooltip.textContent = u.name + (u.id === 'you' ? ' (You)' : '');
+      tooltip.style.left = (r.left + r.width/2) + 'px';
+      tooltip.style.top = r.top + 'px';
+      tooltip.classList.add('show');
+    });
+    a.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
+    a.addEventListener('click', () => { if (u.id !== 'you') startSpotlight(u); });
+    avatarStack.appendChild(a);
+  });
+}
+renderAvatars();
+
+// ============== CURSORS (no autoplay) ==============
+const cursorEls = {};
+const cursorState = {}; // { x, y } in canvas coords
+
+function createCursor(user) {
+  const el = document.createElement('div');
+  el.className = 'cursor';
+  el.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M3 2 L17 9 L10 11 L8 18 Z" fill="${user.color}" stroke="#fff" stroke-width="1.2" stroke-linejoin="round"/>
+    </svg>
+    <div class="cursor-label" style="background:${user.color}">${user.name}</div>
+  `;
+  main.appendChild(el);
+  cursorEls[user.id] = el;
+  cursorState[user.id] = { x: 0, y: 0 };
+}
+users.forEach(createCursor);
+
+const viewport = document.getElementById('viewport');
+let camera = { x: 0, y: 0 };
+function applyCamera() {
+  canvas.style.transform = `translate(-50%,-50%) translate(${camera.x}px, ${camera.y}px)`;
+  requestAnimationFrame(updateAllCursorScreenPositions);
+}
+function centerOnCanvasPoint(cx, cy) { camera.x = 1500 - cx; camera.y = 1000 - cy; applyCamera(); }
+centerOnCanvasPoint(1000, 950);
+
+function updateCursorScreen(uid) {
+  const el = cursorEls[uid];
+  const p = cursorState[uid];
+  const cRect = canvas.getBoundingClientRect();
+  const mainRect = main.getBoundingClientRect();
+  const sx = cRect.width / 3000, sy = cRect.height / 2000;
+  const fx = cRect.left + p.x * sx - mainRect.left;
+  const fy = cRect.top + p.y * sy - mainRect.top;
+  el.style.transform = `translate(${fx}px, ${fy}px)`;
+}
+function updateAllCursorScreenPositions() {
+  Object.keys(cursorEls).forEach(updateCursorScreen);
+}
+window.addEventListener('resize', updateAllCursorScreenPositions);
+// Re-sync cursor screen positions while camera CSS transition is running
+canvas.addEventListener('transitionrun', () => {
+  let frames = 0;
+  function loop() { updateAllCursorScreenPositions(); if (frames++ < 70) requestAnimationFrame(loop); }
+  loop();
+});
+
+function moveCursorTo(uid, x, y) {
+  cursorState[uid] = { x, y };
+  updateCursorScreen(uid);
+}
+function showCursor(uid) { cursorEls[uid].classList.add('visible'); }
+function hideCursor(uid) { cursorEls[uid].classList.remove('visible'); }
+
+// ============== SPOTLIGHT PANEL ==============
+const spotlightBtn = document.getElementById('spotlightBtn');
+const spotlightBtnLabel = document.getElementById('spotlightBtnLabel');
+const spotlightFrame = document.getElementById('spotlightFrame');
+const spotlightBanner = document.getElementById('spotlightBanner');
+const spotlightBannerText = document.getElementById('spotlightBannerText');
+const exitSpotlightBtn = document.getElementById('exitSpotlight');
+
+let panel = null;
+let spotlightTarget = null;
+let meSpotlighting = false;
+let highlightUserId = null; // user row to highlight in panel
+
+function openPanel() {
+  if (panel) return;
+  panel = document.createElement('div');
+  panel.className = 'spotlight-panel';
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-title">Live session</div>
+      <button class="panel-toggle ${meSpotlighting?'on':''}" id="meToggle">${meSpotlighting?'Spotlighting':'Spotlight me'}</button>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Currently viewing</div>
+      <div id="currentlyViewing"></div>
+    </div>
+    <div class="panel-section" style="border-top:1px solid var(--border)">
+      <div class="panel-section-title">Previously viewing</div>
+      <div id="previouslyViewing"></div>
+    </div>
+  `;
+  main.appendChild(panel);
+  renderPanelLists();
+  document.getElementById('meToggle').addEventListener('click', toggleMeSpotlight);
+}
+function closePanel() { if (panel) { panel.remove(); panel = null; } }
+
+function renderPanelLists() {
+  if (!panel) return;
+  const cur = document.getElementById('currentlyViewing');
+  const prev = document.getElementById('previouslyViewing');
+  const currently = users.filter(u => visibleUserIds.has(u.id));
+  const previously = users.filter(u => !visibleUserIds.has(u.id));
+
+  cur.innerHTML = '';
+  currently.forEach(u => {
+    const isFollowing = spotlightTarget && spotlightTarget.id === u.id;
+    const row = document.createElement('div');
+    row.className = 'user-row' + (isFollowing ? ' active' : '') + (highlightUserId === u.id ? ' highlight' : '');
+    row.innerHTML = `
+      <div class="avatar" style="background:${u.color}">${u.initials}</div>
+      <div class="user-info">
+        <div class="user-name">${u.name}</div>
+        <div class="user-meta">${isFollowing ? 'You are following' : 'Active now'}</div>
+      </div>
+      ${isFollowing ? '<div class="following-badge">Following</div>' : ''}
+    `;
+    row.addEventListener('click', () => {
+      if (isFollowing) stopSpotlight();
+      else startSpotlight(u);
+    });
+    cur.appendChild(row);
+  });
+
+  prev.innerHTML = '';
+  if (previously.length === 0) {
+    prev.innerHTML = '<div class="user-row dim"><div class="user-info"><div class="user-meta">No previous viewers</div></div></div>';
+  } else {
+    previously.forEach(u => {
+      const row = document.createElement('div');
+      row.className = 'user-row dim';
+      row.innerHTML = `
+        <div class="avatar" style="background:${u.color}">${u.initials}</div>
+        <div class="user-info">
+          <div class="user-name">${u.name}</div>
+          <div class="user-meta">left a moment ago</div>
+        </div>
+      `;
+      prev.appendChild(row);
+    });
+  }
+}
+
+function startSpotlight(user) {
+  spotlightTarget = user;
+  spotlightFrame.classList.add('active');
+  spotlightFrame.style.setProperty('--user-color', user.color);
+  spotlightBanner.style.background = user.color;
+  spotlightBannerText.textContent = 'Following ' + user.name;
+  spotlightBanner.classList.add('show');
+  const p = cursorState[user.id];
+  if (p) centerOnCanvasPoint(p.x, p.y);
+  renderPanelLists();
+}
+function stopSpotlight() {
+  spotlightTarget = null;
+  if (!meSpotlighting) { spotlightFrame.classList.remove('active'); spotlightBanner.classList.remove('show'); }
+  renderPanelLists();
+}
+exitSpotlightBtn.addEventListener('click', () => { stopSpotlight(); meSpotlighting && toggleMeSpotlight(); });
+
+function toggleMeSpotlight() {
+  meSpotlighting = !meSpotlighting;
+  spotlightBtn.classList.toggle('active', meSpotlighting);
+  spotlightBtn.classList.remove('pulse');
+  spotlightBtnLabel.textContent = meSpotlighting ? 'Spotlighting' : 'Spotlight me';
+  const toggleEl = document.getElementById('meToggle');
+  if (toggleEl) { toggleEl.classList.toggle('on', meSpotlighting); toggleEl.textContent = meSpotlighting ? 'Spotlighting' : 'Spotlight me'; }
+  if (meSpotlighting) {
+    spotlightFrame.classList.add('active');
+    spotlightFrame.style.setProperty('--user-color', currentUser.color);
+    spotlightBanner.style.background = currentUser.color;
+    spotlightBannerText.textContent = 'You are spotlighting — others can follow you';
+    spotlightBanner.classList.add('show');
+  } else if (!spotlightTarget) {
+    spotlightFrame.classList.remove('active');
+    spotlightBanner.classList.remove('show');
+  }
+}
+
+spotlightBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  spotlightBtn.classList.remove('pulse');
+  panel ? closePanel() : openPanel();
+});
+
+// ============== NODE SELECTION HELPERS ==============
+function selectNodeByUser(nodeId, user) {
+  document.querySelectorAll('.node').forEach(n => {
+    if (n.dataset.id === nodeId) {
+      n.classList.add('selected-by-user');
+      n.style.setProperty('--user-color', user.color);
+    }
+  });
+}
+function clearAllSelections() {
+  document.querySelectorAll('.node').forEach(n => { n.classList.remove('selected-by-user'); n.style.removeProperty('--user-color'); });
+}
+
+// ============== SCENE CONTROLLER ==============
+const sceneText = document.getElementById('sceneText');
+const sceneCounter = document.getElementById('sceneCounter');
+const nextBtn = document.getElementById('nextBtn');
+const prevBtn = document.getElementById('prevBtn');
+
+const scenes = [
+  {
+    text: "You're alone on this graph. Click Next to see what happens when teammates join.",
+    enter() {
+      visibleUserIds.clear(); visibleUserIds.add('you');
+      users.forEach(u => hideCursor(u.id));
+      clearAllSelections();
+      closePanel();
+      stopSpotlight();
+      if (meSpotlighting) toggleMeSpotlight();
+      centerOnCanvasPoint(1000, 950);
+      renderAvatars();
+    }
+  },
+  {
+    text: "Tom Martin just joined. His avatar appears in the top bar and his cursor shows up on the canvas.",
+    enter() {
+      visibleUserIds.add('tom');
+      renderAvatars();
+      moveCursorTo('tom', 1400, 1280);
+      showCursor('tom');
+      clearAllSelections();
+    }
+  },
+  {
+    text: "Tom clicked a node — you can see his red selection ring. His cursor moved too.",
+    enter() {
+      visibleUserIds.add('tom');
+      renderAvatars();
+      showCursor('tom');
+      moveCursorTo('tom', 1620, 950);
+      setTimeout(() => selectNodeByUser('n5', users[0]), 200);
+    }
+  },
+  {
+    text: "Adam H joined too. Two teammates are now exploring with you.",
+    enter() {
+      visibleUserIds.add('tom'); visibleUserIds.add('adam');
+      renderAvatars();
+      showCursor('tom'); showCursor('adam');
+      moveCursorTo('tom', 1620, 950);
+      moveCursorTo('adam', 750, 600);
+      selectNodeByUser('n5', users[0]);
+    }
+  },
+  {
+    text: "Click the Spotlight button in the top bar to see who's here →",
+    enter() {
+      spotlightBtn.classList.add('pulse');
+      closePanel();
+    },
+    exit() { spotlightBtn.classList.remove('pulse'); }
+  },
+  {
+    text: "Click Tom Martin in the panel to follow his view.",
+    enter() {
+      openPanel();
+      highlightUserId = 'tom';
+      renderPanelLists();
+    },
+    exit() { highlightUserId = null; renderPanelLists(); }
+  },
+  {
+    text: "You're now following Tom — the canvas pans to his view and a red frame shows you're in spotlight mode.",
+    enter() {
+      openPanel();
+      startSpotlight(users[0]);
+      setTimeout(() => moveCursorTo('tom', 1700, 880), 600);
+    }
+  },
+  {
+    text: "Click 'Spotlight me' to broadcast your own view. Others can now follow you.",
+    enter() {
+      stopSpotlight();
+      if (!meSpotlighting) toggleMeSpotlight();
+      openPanel();
+      // simulate Adam following you — move his cursor near yours
+      moveCursorTo('adam', 1000, 950);
+      moveCursorTo('tom', 1050, 980);
+      centerOnCanvasPoint(1000, 950);
+    }
+  },
+];
+
+let sceneIdx = 0;
+function goToScene(i) {
+  if (i < 0 || i >= scenes.length) return;
+  const prev = scenes[sceneIdx];
+  if (prev && prev.exit) prev.exit();
+  sceneIdx = i;
+  const s = scenes[sceneIdx];
+  s.enter();
+  sceneText.textContent = s.text;
+  sceneCounter.textContent = `${sceneIdx + 1} / ${scenes.length}`;
+  prevBtn.style.opacity = sceneIdx === 0 ? '.4' : '1';
+  prevBtn.style.pointerEvents = sceneIdx === 0 ? 'none' : 'auto';
+  nextBtn.textContent = sceneIdx === scenes.length - 1 ? 'Restart ↻' : 'Next →';
+}
+nextBtn.addEventListener('click', () => {
+  if (sceneIdx === scenes.length - 1) goToScene(0);
+  else goToScene(sceneIdx + 1);
+});
+prevBtn.addEventListener('click', () => goToScene(sceneIdx - 1));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') nextBtn.click();
+  if (e.key === 'ArrowLeft') prevBtn.click();
+});
+
+goToScene(0);
+</script>
+</body>
+</html>
