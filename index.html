@@ -22,7 +22,11 @@
   .topbar-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
   .saved { font-size:12px; color:var(--muted); }
 
+  .avatar-group { display:flex; align-items:center; background:#f4f4f4; border-radius:18px; padding:3px 6px 3px 4px; gap:4px; cursor:pointer; }
+  .avatar-group:hover { background:#eaeaea; }
   .avatar-stack { display:flex; }
+  .avatar-chevron { width:18px; height:18px; display:flex; align-items:center; justify-content:center; color:#6a6a6a; background:transparent; border:none; cursor:pointer; padding:0; }
+  .avatar-chevron svg { width:14px; height:14px; }
   .avatar { width:26px; height:26px; border-radius:50%; border:2px solid #fff; margin-left:-6px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:600; cursor:pointer; position:relative; transition:transform .2s, opacity .3s; }
   .avatar:first-child { margin-left:0; }
   .avatar:hover { transform:translateY(-2px); z-index:5; }
@@ -30,11 +34,17 @@
   .avatar.entering { animation:avatarIn .35s ease-out; }
   @keyframes avatarIn { from { opacity:0; transform:scale(0.5); } to { opacity:1; transform:scale(1); } }
 
-  .spotlight-btn { display:flex; align-items:center; gap:6px; padding:6px 12px; background:#1a1a1a; color:#fff; border-radius:18px; font-size:12px; font-weight:500; cursor:pointer; border:none; transition:background .2s; }
-  .spotlight-btn.active { background:var(--accent); }
-  .spotlight-btn .dot { width:8px; height:8px; background:#fff; border-radius:50%; }
-  .spotlight-btn.pulse { box-shadow:0 0 0 0 rgba(255,91,46,.6); animation:pulse 1.4s infinite; }
+  .avatar-group.pulse { box-shadow:0 0 0 0 rgba(255,91,46,.6); animation:pulse 1.4s infinite; }
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,91,46,.6);} 70%{box-shadow:0 0 0 12px rgba(255,91,46,0);} 100%{box-shadow:0 0 0 0 rgba(255,91,46,0);} }
+
+  /* Top "you" section in panel */
+  .panel-you { display:flex; align-items:center; gap:12px; padding:14px; border-bottom:1px solid var(--border); }
+  .panel-you .avatar { width:36px; height:36px; font-size:13px; border:none; margin:0; }
+  .panel-you .you-name { flex:1; font-size:14px; font-weight:600; }
+  .panel-you .spotlight-me-btn { background:#4a5cf6; color:#fff; border:none; padding:8px 16px; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; transition:background .15s; }
+  .panel-you .spotlight-me-btn:hover { background:#3a4ce6; }
+  .panel-you .spotlight-me-btn.on { background:var(--accent); }
+  .panel-you .spotlight-me-btn.on:hover { background:#e84d20; }
 
   .icon-btn { width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; cursor:pointer; color:var(--muted); background:transparent; border:none; }
   .icon-btn:hover { background:#f2f2f2; color:var(--text); }
@@ -81,6 +91,10 @@
   .user-row.dim { opacity:.55; }
   .user-row.highlight { animation:rowGlow 1.4s ease-in-out infinite; }
   @keyframes rowGlow { 0%,100% { background:#fff5f0; } 50% { background:#ffe0d0; } }
+  .user-row .row-more { width:24px; height:24px; display:flex; align-items:center; justify-content:center; color:var(--muted); opacity:0; transition:opacity .15s; }
+  .user-row:hover .row-more { opacity:1; }
+  .user-row .row-more svg { width:14px; height:14px; }
+  .user-row .click-hint { font-size:11px; color:var(--muted); }
 
   .spotlight-frame { position:absolute; inset:0; pointer-events:none; z-index:25; border:3px solid transparent; transition:border-color .3s; }
   .spotlight-frame.active { border-color:var(--user-color,var(--accent)); }
@@ -118,11 +132,12 @@
     </div>
     <div class="topbar-right">
       <div class="saved">Edited 2 mins ago</div>
-      <div class="avatar-stack" id="avatarStack"></div>
-      <button class="spotlight-btn" id="spotlightBtn">
-        <span class="dot"></span>
-        <span id="spotlightBtnLabel">Spotlight me</span>
-      </button>
+      <div class="avatar-group" id="avatarGroup">
+        <div class="avatar-stack" id="avatarStack"></div>
+        <button class="avatar-chevron" id="avatarChevron" title="Open live session">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
       <button class="icon-btn" title="Comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
       <button class="icon-btn" title="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
       <button class="icon-btn" title="More"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
@@ -233,7 +248,6 @@ function renderAvatars() {
       tooltip.classList.add('show');
     });
     a.addEventListener('mouseleave', () => tooltip.classList.remove('show'));
-    a.addEventListener('click', () => { if (u.id !== 'you') startSpotlight(u); });
     avatarStack.appendChild(a);
   });
 }
@@ -296,8 +310,8 @@ function showCursor(uid) { cursorEls[uid].classList.add('visible'); }
 function hideCursor(uid) { cursorEls[uid].classList.remove('visible'); }
 
 // ============== SPOTLIGHT PANEL ==============
-const spotlightBtn = document.getElementById('spotlightBtn');
-const spotlightBtnLabel = document.getElementById('spotlightBtnLabel');
+const avatarGroup = document.getElementById('avatarGroup');
+const avatarChevron = document.getElementById('avatarChevron');
 const spotlightFrame = document.getElementById('spotlightFrame');
 const spotlightBanner = document.getElementById('spotlightBanner');
 const spotlightBannerText = document.getElementById('spotlightBannerText');
@@ -313,9 +327,10 @@ function openPanel() {
   panel = document.createElement('div');
   panel.className = 'spotlight-panel';
   panel.innerHTML = `
-    <div class="panel-header">
-      <div class="panel-title">Live session</div>
-      <button class="panel-toggle ${meSpotlighting?'on':''}" id="meToggle">${meSpotlighting?'Spotlighting':'Spotlight me'}</button>
+    <div class="panel-you">
+      <div class="avatar" style="background:${currentUser.color}">${currentUser.initials}</div>
+      <div class="you-name">${currentUser.name} <span style="color:var(--muted);font-weight:400">(you)</span></div>
+      <button class="spotlight-me-btn ${meSpotlighting?'on':''}" id="meToggle">${meSpotlighting?'Spotlighting':'Spotlight me'}</button>
     </div>
     <div class="panel-section">
       <div class="panel-section-title">Currently viewing</div>
@@ -348,9 +363,9 @@ function renderPanelLists() {
       <div class="avatar" style="background:${u.color}">${u.initials}</div>
       <div class="user-info">
         <div class="user-name">${u.name}</div>
-        <div class="user-meta">${isFollowing ? 'You are following' : 'Active now'}</div>
+        <div class="user-meta">${isFollowing ? 'You are following' : 'Click to follow'}</div>
       </div>
-      ${isFollowing ? '<div class="following-badge">Following</div>' : ''}
+      ${isFollowing ? '<div class="following-badge">Following</div>' : '<div class="row-more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></div>'}
     `;
     row.addEventListener('click', () => {
       if (isFollowing) stopSpotlight();
@@ -398,9 +413,6 @@ exitSpotlightBtn.addEventListener('click', () => { stopSpotlight(); meSpotlighti
 
 function toggleMeSpotlight() {
   meSpotlighting = !meSpotlighting;
-  spotlightBtn.classList.toggle('active', meSpotlighting);
-  spotlightBtn.classList.remove('pulse');
-  spotlightBtnLabel.textContent = meSpotlighting ? 'Spotlighting' : 'Spotlight me';
   const toggleEl = document.getElementById('meToggle');
   if (toggleEl) { toggleEl.classList.toggle('on', meSpotlighting); toggleEl.textContent = meSpotlighting ? 'Spotlighting' : 'Spotlight me'; }
   if (meSpotlighting) {
@@ -415,15 +427,15 @@ function toggleMeSpotlight() {
   }
 }
 
-spotlightBtn.addEventListener('click', (e) => {
+avatarGroup.addEventListener('click', (e) => {
   e.stopPropagation();
-  spotlightBtn.classList.remove('pulse');
+  avatarGroup.classList.remove('pulse');
   panel ? closePanel() : openPanel();
 });
 document.addEventListener('mousedown', (e) => {
   if (!panel) return;
   if (panel.contains(e.target)) return;
-  if (spotlightBtn.contains(e.target)) return;
+  if (avatarGroup.contains(e.target)) return;
   closePanel();
 });
 
@@ -492,12 +504,12 @@ const scenes = [
     }
   },
   {
-    text: "Click the Spotlight button in the top bar to see who's here →",
+    text: "Click the avatar group in the top bar to open the live session panel →",
     enter() {
-      spotlightBtn.classList.add('pulse');
+      avatarGroup.classList.add('pulse');
       closePanel();
     },
-    exit() { spotlightBtn.classList.remove('pulse'); }
+    exit() { avatarGroup.classList.remove('pulse'); }
   },
   {
     text: "Click Tom Martin in the panel to follow his view.",
