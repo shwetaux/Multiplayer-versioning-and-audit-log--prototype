@@ -204,16 +204,40 @@
   .item-extra { display:flex; align-items:center; gap:14px; margin-top:6px; }
   .item-chat-link { display:inline-flex; align-items:center; gap:5px; color:#5a4cf4; font-size:12px; font-weight:500; cursor:pointer; }
   .item-chat-link svg { width:14px; height:14px; }
-  .item-menu-btn {
+  .item-actions { display:flex; align-items:center; gap:2px; flex-shrink:0; }
+  .item-menu-btn, .item-ai-btn {
     background:transparent; border:none; cursor:pointer;
     width:28px; height:28px; border-radius:6px;
     display:flex; align-items:center; justify-content:center;
     color:var(--muted); opacity:0; transition:opacity .12s, background .12s;
     flex-shrink:0;
   }
-  .history-item:hover .item-menu-btn { opacity:1; }
-  .item-menu-btn:hover { background:#eaeaea; color:#1a1a1a; }
-  .item-menu-btn svg { width:16px; height:16px; }
+  .history-item:hover .item-menu-btn,
+  .history-item:hover .item-ai-btn { opacity:1; }
+  .item-menu-btn:hover, .item-ai-btn:hover { background:#eaeaea; color:#1a1a1a; }
+  .item-menu-btn svg, .item-ai-btn svg { width:16px; height:16px; }
+
+  .ai-summary-popover {
+    position:absolute; z-index:80;
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 8px 24px rgba(0,0,0,.14);
+    padding:12px 14px; width:280px;
+    animation:panelIn .12s ease-out;
+  }
+  .ai-summary-head {
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; font-weight:600; color:#1a1a1a;
+    margin-bottom:8px;
+  }
+  .ai-summary-head .ai-badge {
+    width:20px; height:20px; border-radius:5px;
+    background:linear-gradient(135deg, #ff8a3d 0%, #ff5b2e 60%, #e6356b 100%);
+    display:flex; align-items:center; justify-content:center; color:#fff;
+  }
+  .ai-summary-head .ai-badge svg { width:12px; height:12px; }
+  .ai-summary-body { font-size:13px; color:#3a3a3a; line-height:1.45; }
+  .ai-summary-body ul { margin:6px 0 0; padding-left:18px; }
+  .ai-summary-body li { margin-bottom:3px; }
 
   .item-popover {
     position:absolute; z-index:80;
@@ -871,7 +895,20 @@ function renderHistoryBody() {
       `;
       item.appendChild(content);
 
-      // Menu button (skip on current)
+      // Actions: AI summary + menu
+      const actions = document.createElement('div');
+      actions.className = 'item-actions';
+
+      const aiBtn = document.createElement('button');
+      aiBtn.className = 'item-ai-btn';
+      aiBtn.title = 'AI summary of changes';
+      aiBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="14" y2="6"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/><path d="M18 14l1.2 2.4L21.6 17.6 19.2 18.8 18 21.2 16.8 18.8 14.4 17.6 16.8 16.4z" fill="currentColor" stroke="none"/></svg>`;
+      aiBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openAiSummaryPopover(aiBtn, it);
+      });
+      actions.appendChild(aiBtn);
+
       if (!it.current) {
         const menuBtn = document.createElement('button');
         menuBtn.className = 'item-menu-btn';
@@ -881,8 +918,10 @@ function renderHistoryBody() {
           e.stopPropagation();
           openItemPopover(menuBtn, it);
         });
-        item.appendChild(menuBtn);
+        actions.appendChild(menuBtn);
       }
+
+      item.appendChild(actions);
 
       itemsContainer.appendChild(item);
     });
@@ -938,6 +977,34 @@ function openItemPopover(anchor, item) {
       closeItemPopover();
     }
   }));
+}
+
+const aiSummaries = {
+  user: ['Re-parented 3 nodes under the new AI Tools page', 'Renamed "Helix Mixer" terminal node', 'Added 2 new wallet addresses to cluster'],
+  automation: ['LIFO workflow expanded 12 outbound hops', 'Auto-grouped 8 wallets by exchange heuristic', 'Tagged 4 nodes as "mixer-adjacent"'],
+  llm: ['Summarized fund flow path from Coinbase → Helix Mixer', 'Suggested 3 likely peel-chain candidates', 'Flagged 1 high-risk counterparty'],
+  data: ['Refreshed balances for 14 addresses', 'Pulled latest tx data from 3 chains'],
+};
+function openAiSummaryPopover(anchor, item) {
+  closeItemPopover();
+  const pop = document.createElement('div');
+  pop.className = 'ai-summary-popover';
+  const bullets = (aiSummaries[item.actor] || aiSummaries.user).map(b => `<li>${b}</li>`).join('');
+  pop.innerHTML = `
+    <div class="ai-summary-head">
+      <span class="ai-badge"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.8 4.8L18.6 8.6 13.8 10.4 12 15.2 10.2 10.4 5.4 8.6 10.2 6.8z"/><path d="M19 14l.9 2.4L22.3 17.3 19.9 18.2 19 20.6 18.1 18.2 15.7 17.3 18.1 16.4z"/></svg></span>
+      AI summary of changes
+    </div>
+    <div class="ai-summary-body">
+      <ul>${bullets}</ul>
+    </div>
+  `;
+  historyDrawer.appendChild(pop);
+  const aRect = anchor.getBoundingClientRect();
+  const dRect = historyDrawer.getBoundingClientRect();
+  pop.style.left = Math.max(8, aRect.left - dRect.left - 250) + 'px';
+  pop.style.top = (aRect.bottom - dRect.top + 4) + 'px';
+  openPopover = pop;
 }
 
 function closeFilterMenu() { if (filterMenu) { filterMenu.remove(); filterMenu = null; } }
