@@ -1282,13 +1282,10 @@ function renderHistoryBody() {
       // Content
       const content = document.createElement('div');
       content.className = 'item-content';
-      const detKind = (it.actor === 'llm') ? 'ai' : 'det';
-      const detLabel = (it.actor === 'llm') ? 'AI inference' : 'Deterministic';
       const namedPill = it.named ? `<span class="kind-pill named-pill" title="Named version">★ ${escapeHtml(it.named)}</span>` : '';
       content.innerHTML = `
         <div class="item-time-row">
           <span class="item-time">${it.time}</span>
-          <span class="kind-pill kind-${detKind}">${detLabel}</span>
           ${namedPill}
         </div>
         <div class="item-desc">${it.desc}</div>
@@ -1579,6 +1576,7 @@ function openAiSummaryPanel(item) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="14" y2="6"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/><path d="M18 14l1.2 2.4L21.6 17.6 19.2 18.8 18 21.2 16.8 18.8 14.4 17.6 16.8 16.4z" fill="currentColor" stroke="none"/></svg>
     </span>
     <div class="summary-head-title">${item.actor === 'llm' ? 'Agent reasoning' : 'Summary of changes'}</div>
+    <span class="kind-pill kind-${item.actor === 'llm' ? 'ai' : 'det'}" title="${item.actor === 'llm' ? 'Non-deterministic — produced by LLM inference' : 'Deterministic — reproducible operation'}">${item.actor === 'llm' ? 'AI inference' : 'Deterministic'}</span>
     <button class="history-close" id="historyClose" title="Close">${filterIcons.close}</button>
   `;
   header.querySelector('#summaryBack').addEventListener('click', restoreHistoryHeader);
