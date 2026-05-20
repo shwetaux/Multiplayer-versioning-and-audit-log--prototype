@@ -85,8 +85,8 @@
   .node { position:absolute; width:56px; height:56px; border-radius:50%; background:#9a9a9a; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .2s, box-shadow .3s; }
   .node:hover { transform:scale(1.05); }
   .node.mixer-node { background:#e6356b; }
-  .node .node-icon { color:#fff; opacity:.95; }
-  .node .node-icon svg { width:22px; height:22px; }
+  .node .node-icon { width:24px; height:24px; display:flex; align-items:center; justify-content:center; color:#fff; opacity:.95; }
+  .node .node-icon svg { width:24px; height:24px; display:block; }
   .node .node-badge {
     position:absolute; right:-2px; bottom:-2px;
     background:#ff8a3d; color:#fff;
@@ -287,7 +287,7 @@ function getNode(id) { return nodes.find(n => n.id === id); }
     canvas.appendChild(lbl);
   });
 
-  const walletIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>`;
+  const walletIcon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 7H5a1 1 0 0 1 0-2h13a1 1 0 0 0 0-2H5a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3h15a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zm-2 9.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>`;
   const mixerIcon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10v2l-3 4v4l4 8H6l4-8V8L7 4V2zm2.5 2l2 2.5v4.5l-3 6h7l-3-6V6.5L14.5 4h-5z"/></svg>`;
   const badgeWallet = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-2 8h-2v-2h2v2z"/></svg>`;
 
