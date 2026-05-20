@@ -12,15 +12,28 @@
   html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif; color:var(--text); }
   body { background:var(--bg); }
 
-  .topbar { height:48px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 12px; gap:16px; background:#fff; position:relative; z-index:30; }
-  .logo { width:26px; height:26px; background:var(--accent); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:14px; }
-  .brand { font-weight:600; font-size:14px; }
-  .tabs { display:flex; gap:4px; margin-left:8px; }
-  .tab { padding:6px 10px; font-size:13px; color:var(--muted); border-radius:6px; cursor:pointer; }
-  .tab.active { color:var(--text); background:#f2f2f2; }
-  .tab:hover:not(.active) { background:#f7f7f7; }
-  .topbar-right { margin-left:auto; display:flex; align-items:center; gap:12px; }
-  .saved { font-size:12px; color:var(--muted); }
+  .page-tag { padding:6px 16px; font-size:12px; color:#8a8a8a; background:#f4f4f4; border-bottom:1px solid var(--border); }
+  .topbar { height:56px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; gap:24px; background:#fff; position:relative; z-index:30; }
+  .logo { width:32px; height:32px; background:var(--accent); border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; flex-shrink:0; }
+  .logo svg { width:18px; height:18px; }
+  .brand { font-weight:600; font-size:15px; color:#1a1a1a; }
+  .tabs { display:flex; gap:4px; align-items:center; }
+  .tab { padding:18px 4px; font-size:14px; color:#5a5a5a; cursor:pointer; display:flex; align-items:center; gap:4px; position:relative; margin:0 8px; }
+  .tab .caret { width:12px; height:12px; opacity:.55; }
+  .tab.active { color:var(--accent); font-weight:500; }
+  .tab.active::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--accent); border-radius:2px 2px 0 0; }
+  .tab:hover:not(.active) { color:#1a1a1a; }
+  .topbar-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .topbar-right .you-avatar { width:30px; height:30px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+
+  /* Sub toolbar (second row) */
+  .subbar { height:48px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; gap:12px; background:#fff; position:relative; z-index:29; }
+  .graph-name { display:flex; align-items:center; gap:6px; font-size:14px; color:#1a1a1a; cursor:pointer; padding:6px 8px; border-radius:6px; }
+  .graph-name:hover { background:#f5f5f5; }
+  .graph-name svg { width:12px; height:12px; opacity:.6; }
+  .subbar-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
+  .saved { font-size:13px; color:#8a8a8a; margin-right:8px; }
+  .subbar-divider { width:1px; height:20px; background:var(--border); margin:0 4px; }
 
   .avatar-group { display:flex; align-items:center; background:#f4f4f4; border-radius:18px; padding:3px 6px 3px 4px; gap:4px; cursor:pointer; }
   .avatar-group:hover { background:#eaeaea; }
@@ -50,22 +63,44 @@
   .icon-btn:hover { background:#f2f2f2; color:var(--text); }
   .icon-btn svg { width:16px; height:16px; }
 
-  .main { position:relative; width:100%; height:calc(100vh - 48px); overflow:hidden; background:var(--canvas-bg); }
+  .main { position:relative; width:100%; height:calc(100vh - 56px - 48px - 28px); overflow:hidden; background:var(--canvas-bg); }
   .search-bar { position:absolute; top:16px; left:16px; z-index:20; width:360px; height:36px; background:#fff; border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; padding:0 12px; gap:8px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
   .search-bar input { flex:1; border:none; outline:none; font-size:13px; background:transparent; }
   .search-bar input::placeholder { color:var(--muted); }
 
   .canvas-viewport { position:absolute; inset:0; overflow:hidden; }
-  .canvas { position:absolute; width:3000px; height:2000px; left:50%; top:50%; transform:translate(-50%,-50%); background-image:radial-gradient(circle,var(--dot) 1px,transparent 1px); background-size:20px 20px; transition:transform 1s cubic-bezier(0.22,1,0.36,1); }
+  .canvas {
+    position:absolute; width:3000px; height:2000px; left:50%; top:50%;
+    transform:translate(-50%,-50%);
+    background-color:#fafafa;
+    background-image:
+      linear-gradient(to right, #eaeaea 1px, transparent 1px),
+      linear-gradient(to bottom, #eaeaea 1px, transparent 1px),
+      radial-gradient(circle, #d8d8d8 1px, transparent 1px);
+    background-size: 240px 240px, 240px 240px, 24px 24px;
+    transition:transform 1s cubic-bezier(0.22,1,0.36,1);
+  }
   .canvas svg { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
 
-  .node { position:absolute; width:64px; height:64px; border-radius:50%; background:linear-gradient(135deg,#f0f0f0,#d8d8d8); border:2px solid #fff; box-shadow:0 2px 8px rgba(0,0,0,.08); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .2s, box-shadow .3s; }
+  .node { position:absolute; width:56px; height:56px; border-radius:50%; background:#9a9a9a; border:none; box-shadow:none; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:transform .2s, box-shadow .3s; }
   .node:hover { transform:scale(1.05); }
-  .node.main-node { width:80px; height:80px; background:radial-gradient(circle,#fff 0%,#ffd8c4 60%,var(--accent) 100%); }
-  .node-label { position:absolute; top:100%; left:50%; transform:translate(-50%,6px); font-size:10px; color:var(--muted); white-space:nowrap; font-family:ui-monospace,"SF Mono",Menlo,monospace; }
-  .node-eth { position:absolute; bottom:100%; left:50%; transform:translate(-50%,-4px); font-size:9px; background:#fff; padding:1px 5px; border-radius:8px; border:1px solid var(--border); white-space:nowrap; }
-  .node.selected-by-user { box-shadow:0 0 0 3px var(--user-color,#3b82f6),0 2px 8px rgba(0,0,0,.08); }
-  .edge-label { position:absolute; background:#fff; border:1px solid var(--border); border-radius:8px; padding:2px 6px; font-size:10px; transform:translate(-50%,-50%); pointer-events:none; }
+  .node.mixer-node { background:#e6356b; }
+  .node .node-icon { color:#fff; opacity:.95; }
+  .node .node-icon svg { width:22px; height:22px; }
+  .node .node-badge {
+    position:absolute; right:-2px; bottom:-2px;
+    background:#ff8a3d; color:#fff;
+    font-size:9px; font-weight:600;
+    padding:2px 5px 2px 4px; border-radius:8px;
+    display:flex; align-items:center; gap:2px;
+    border:2px solid #fafafa;
+    line-height:1;
+  }
+  .node .node-badge svg { width:9px; height:9px; }
+  .node-label { position:absolute; top:100%; left:50%; transform:translate(-50%,8px); font-size:11px; color:#5a5a5a; white-space:nowrap; }
+  .node-sublabel { position:absolute; top:calc(100% + 24px); left:50%; transform:translate(-50%,0); font-size:10px; color:#8a8a8a; background:#f0f0f0; padding:1px 8px; border-radius:8px; white-space:nowrap; }
+  .node.selected-by-user { box-shadow:0 0 0 3px var(--user-color,#3b82f6); }
+  .edge-label { position:absolute; font-size:11px; color:#5a5a5a; transform:translate(-50%,-50%); pointer-events:none; background:transparent; padding:1px 4px; }
 
   .cursor { position:absolute; pointer-events:none; z-index:100; transition:transform 1.4s cubic-bezier(0.22,1,0.36,1), opacity .35s; opacity:0; will-change:transform; }
   .cursor.visible { opacity:1; }
@@ -119,27 +154,42 @@
 </style>
 </head>
 <body>
+  <div class="page-tag">Graph</div>
   <div class="topbar">
-    <div class="logo">R</div>
+    <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg></div>
     <div class="brand">Reactor</div>
     <div class="tabs">
       <div class="tab">Cases</div>
-      <div class="tab active">Graphs</div>
-      <div class="tab">Community</div>
+      <div class="tab active">Graphs <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="tab">Community <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
       <div class="tab">Labs</div>
-      <div class="tab">Phases</div>
-      <div class="tab">Tools</div>
+      <div class="tab">Rapid</div>
+      <div class="tab">Tools <svg class="caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
     </div>
     <div class="topbar-right">
-      <div class="saved">Edited 2 mins ago</div>
+      <button class="icon-btn" title="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
+      <div class="you-avatar" title="You">JL</div>
+    </div>
+  </div>
+  <div class="subbar">
+    <div class="graph-name">Graph name <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <div class="subbar-right">
+      <span class="saved">Edited 2 mins ago</span>
       <div class="avatar-group" id="avatarGroup">
         <div class="avatar-stack" id="avatarStack"></div>
         <button class="avatar-chevron" id="avatarChevron" title="Open live session">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
       </div>
-      <button class="icon-btn" title="Comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
-      <button class="icon-btn" title="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+      <div class="subbar-divider"></div>
+      <button class="icon-btn" title="Notifications"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+      <button class="icon-btn" title="Add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button>
+      <button class="icon-btn" title="Split view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/></svg></button>
+      <button class="icon-btn" title="Filters"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="14" y2="6"/><line x1="18" y1="6" x2="20" y2="6"/><circle cx="16" cy="6" r="2"/><line x1="4" y1="12" x2="8" y2="12"/><line x1="12" y1="12" x2="20" y2="12"/><circle cx="10" cy="12" r="2"/><line x1="4" y1="18" x2="14" y2="18"/><line x1="18" y1="18" x2="20" y2="18"/><circle cx="16" cy="18" r="2"/></svg></button>
+      <div class="subbar-divider"></div>
+      <button class="icon-btn" title="Zoom in"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+      <button class="icon-btn" title="Zoom out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></button>
+      <button class="icon-btn" title="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></button>
       <button class="icon-btn" title="More"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg></button>
     </div>
   </div>
@@ -177,21 +227,25 @@ const users = [
 const currentUser = { id:'you', name:'You', color:'#ff5b2e', initials:'Y' };
 
 const nodes = [
-  { id:'n0', x:600,  y:950,  label:'0xMain...A1c2', main:true },
-  { id:'n1', x:1100, y:750,  label:'0xA9bB...69Fc', eth:'1.2 ETH' },
-  { id:'n2', x:1100, y:950,  label:'0x33cD...22Ab', eth:'0.8 ETH' },
-  { id:'n3', x:1100, y:1150, label:'0x5e7A...88De', eth:'2.4 ETH' },
-  { id:'n4', x:1550, y:750,  label:'0xBb12...10AC', eth:'0.6 ETH' },
-  { id:'n5', x:1550, y:950,  label:'0xGfCa...60D2', eth:'1.1 ETH' },
-  { id:'n6', x:1550, y:1150, label:'0xKa3B...05a1', eth:'0.5 ETH' },
+  { id:'n0', x:600,  y:950,  label:'Coinbase.com' },
+  { id:'n1', x:1000, y:780,  label:'0xCd5f8...e5FC4' },
+  { id:'n2', x:1000, y:950,  label:'0xN283j...k39du' },
+  { id:'n3', x:1000, y:1120, label:'0x4ll39...993j3' },
+  { id:'n4', x:1400, y:780,  label:'0x00s34...22kj3' },
+  { id:'n5', x:1400, y:950,  label:'0xDm032...kkdID' },
+  { id:'n6', x:1400, y:1120, label:'0x33Kls...09dk3' },
+  { id:'n7', x:1800, y:950,  label:'Helix Mixer', sublabel:'Mixing', mixer:true },
 ];
 const edges = [
-  { from:'n0', to:'n1', label:'1.2 ETH' },
-  { from:'n0', to:'n2', label:'0.8 ETH' },
-  { from:'n0', to:'n3', label:'2.4 ETH' },
-  { from:'n1', to:'n4', label:'0.6 ETH' },
-  { from:'n2', to:'n5', label:'1.1 ETH' },
-  { from:'n3', to:'n6', label:'0.5 ETH' },
+  { from:'n0', to:'n1', label:'$17k (3)' },
+  { from:'n0', to:'n2', label:'$17k (3)' },
+  { from:'n0', to:'n3', label:'$17k (3)' },
+  { from:'n1', to:'n4', label:'$17k (3)' },
+  { from:'n2', to:'n5', label:'$17k (3)' },
+  { from:'n3', to:'n6', label:'$17k (3)' },
+  { from:'n4', to:'n7', label:'$17k (3)' },
+  { from:'n5', to:'n7', label:'$17k (3)' },
+  { from:'n6', to:'n7', label:'$17k (3)' },
 ];
 
 const canvas = document.getElementById('canvas');
@@ -201,27 +255,70 @@ function getNode(id) { return nodes.find(n => n.id === id); }
 
 (function renderGraph() {
   edgesSvg.setAttribute('viewBox', '0 0 3000 2000');
-  edgesSvg.innerHTML = edges.map(e => {
+  // arrowhead defs + lines
+  const r = 32; // node radius for trimming arrow endpoints
+  let svgInner = `
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M0,0 L10,5 L0,10 z" fill="#a8a8a8"/>
+      </marker>
+    </defs>
+  `;
+  edges.forEach(e => {
     const a = getNode(e.from), b = getNode(e.to);
-    return `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#c8c8c8" stroke-width="1.5"/>`;
-  }).join('');
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const len = Math.hypot(dx, dy);
+    const ux = dx/len, uy = dy/len;
+    const x1 = a.x + ux * (r + 2);
+    const y1 = a.y + uy * (r + 2);
+    const x2 = b.x - ux * (r + 8);
+    const y2 = b.y - uy * (r + 8);
+    svgInner += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#a8a8a8" stroke-width="1.2" marker-end="url(#arrow)"/>`;
+  });
+  edgesSvg.innerHTML = svgInner;
+
   edges.forEach(e => {
     const a = getNode(e.from), b = getNode(e.to);
     const lbl = document.createElement('div');
     lbl.className = 'edge-label';
     lbl.style.left = ((a.x + b.x)/2) + 'px';
-    lbl.style.top = ((a.y + b.y)/2) + 'px';
+    lbl.style.top = ((a.y + b.y)/2 - 12) + 'px';
     lbl.textContent = e.label;
     canvas.appendChild(lbl);
   });
+
+  const walletIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>`;
+  const mixerIcon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 2h10v2l-3 4v4l4 8H6l4-8V8L7 4V2zm2.5 2l2 2.5v4.5l-3 6h7l-3-6V6.5L14.5 4h-5z"/></svg>`;
+  const badgeWallet = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2zm-2 8h-2v-2h2v2z"/></svg>`;
+
   nodes.forEach(n => {
     const el = document.createElement('div');
-    el.className = 'node' + (n.main ? ' main-node' : '');
-    el.style.left = (n.x - 32) + 'px';
-    el.style.top = (n.y - 32) + 'px';
+    el.className = 'node' + (n.mixer ? ' mixer-node' : '');
+    el.style.left = (n.x - 28) + 'px';
+    el.style.top = (n.y - 28) + 'px';
     el.dataset.id = n.id;
-    if (n.eth) { const eth = document.createElement('div'); eth.className='node-eth'; eth.textContent=n.eth; el.appendChild(eth); }
-    const lbl = document.createElement('div'); lbl.className='node-label'; lbl.textContent=n.label; el.appendChild(lbl);
+
+    const icon = document.createElement('div');
+    icon.className = 'node-icon';
+    icon.innerHTML = n.mixer ? mixerIcon : walletIcon;
+    el.appendChild(icon);
+
+    const badge = document.createElement('div');
+    badge.className = 'node-badge';
+    badge.innerHTML = `${badgeWallet}<span>+3</span>`;
+    el.appendChild(badge);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'node-label';
+    lbl.textContent = n.label;
+    el.appendChild(lbl);
+
+    if (n.sublabel) {
+      const sub = document.createElement('div');
+      sub.className = 'node-sublabel';
+      sub.textContent = n.sublabel;
+      el.appendChild(sub);
+    }
     canvas.appendChild(el);
   });
 })();
@@ -279,7 +376,7 @@ function applyCamera() {
   requestAnimationFrame(updateAllCursorScreenPositions);
 }
 function centerOnCanvasPoint(cx, cy) { camera.x = 1500 - cx; camera.y = 1000 - cy; applyCamera(); }
-centerOnCanvasPoint(1000, 950);
+centerOnCanvasPoint(1200, 950);
 
 function updateCursorScreen(uid) {
   const el = cursorEls[uid];
@@ -468,7 +565,7 @@ const scenes = [
       closePanel();
       stopSpotlight();
       if (meSpotlighting) toggleMeSpotlight();
-      centerOnCanvasPoint(1000, 950);
+      centerOnCanvasPoint(1200, 950);
       renderAvatars();
     }
   },
@@ -537,7 +634,7 @@ const scenes = [
       // simulate Adam following you — move his cursor near yours
       moveCursorTo('adam', 1000, 950);
       moveCursorTo('tom', 1050, 980);
-      centerOnCanvasPoint(1000, 950);
+      centerOnCanvasPoint(1200, 950);
     }
   },
 ];
