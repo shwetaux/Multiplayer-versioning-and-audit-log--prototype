@@ -150,11 +150,20 @@
   .filter-option.selected .opt-check { opacity:1; }
   .filter-option .opt-check svg { width:14px; height:14px; }
   .filter-menu-divider { height:1px; background:var(--border); margin:6px 0; }
-  .history-body { flex:1; overflow-y:auto; padding-bottom:8px; }
-  .history-group { padding:4px 0; }
+  .history-body {
+    flex:1; overflow-y:auto; padding-bottom:8px;
+    /* Vertical timeline line through chevron + avatar column (center at 36px from left) */
+    background-image: linear-gradient(#e3e3e3, #e3e3e3);
+    background-repeat: no-repeat;
+    background-attachment: local;
+    background-position: 35px 24px;
+    background-size: 1.5px calc(100% - 48px);
+  }
+  .history-group { padding:4px 0; position:relative; }
   .history-group-header {
     display:flex; align-items:center; gap:12px;
-    padding:10px 16px; cursor:pointer; user-select:none;
+    padding:10px 16px 10px 22px; cursor:pointer; user-select:none;
+    position:relative;
   }
   .history-group-header:hover .group-chevron { background:#eee; }
   .group-chevron {
