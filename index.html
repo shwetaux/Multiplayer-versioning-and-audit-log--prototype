@@ -240,7 +240,7 @@
   .history-close:hover { background:#f2f2f2; color:#1a1a1a; }
   .history-close svg { width:18px; height:18px; }
 
-  .filter-menu { position:absolute; top:48px; left:16px; min-width:220px; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.12); z-index:70; padding:6px 0; animation:panelIn .15s ease-out; transform-origin:top left; }
+  .filter-menu { position:absolute; top:48px; right:56px; min-width:220px; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.12); z-index:70; padding:6px 0; animation:panelIn .15s ease-out; transform-origin:top right; }
   .filter-menu-title { padding:8px 14px 4px; font-size:11px; color:var(--muted); font-weight:500; text-transform:none; }
   .filter-option { display:flex; align-items:center; gap:10px; padding:8px 14px; cursor:pointer; font-size:13px; color:#1a1a1a; }
   .filter-option:hover { background:#f5f5f5; }
@@ -1659,11 +1659,11 @@ function restoreHistoryHeader() {
   if (!historyDrawer) return;
   const header = historyDrawer.querySelector('.history-header');
   header.innerHTML = `
+    <div class="history-title" style="font-size:13px;color:var(--muted);font-weight:500;">Activity log</div>
     <button class="history-filter-btn" id="historyFilterBtn" title="Filter">
       ${filterIcons.all}
       <span id="filterBtnLabel">${filterLabel()}</span>
     </button>
-    <div class="history-title" style="text-align:right;font-size:13px;color:var(--muted);font-weight:500;">Activity log</div>
     <button class="history-close" id="historyClose" title="Close">${filterIcons.close}</button>
   `;
   header.querySelector('#historyClose').addEventListener('click', closeHistory);
@@ -1737,11 +1737,11 @@ function openHistory() {
   historyDrawer.className = 'history-drawer';
   historyDrawer.innerHTML = `
     <div class="history-header">
+      <div class="history-title" style="font-size:13px;color:var(--muted);font-weight:500;">Activity log</div>
       <button class="history-filter-btn" id="historyFilterBtn" title="Filter">
         ${filterIcons.all}
         <span id="filterBtnLabel">${filterLabel()}</span>
       </button>
-      <div class="history-title" style="text-align:right;font-size:13px;color:var(--muted);font-weight:500;">Activity log</div>
       <button class="history-close" id="historyClose" title="Close">${filterIcons.close}</button>
     </div>
     <div class="history-subheader">Every change is recorded automatically · append-only</div>
