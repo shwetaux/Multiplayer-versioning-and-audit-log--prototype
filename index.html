@@ -119,6 +119,97 @@
 
   .spotlight-panel { position:absolute; width:300px; background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12); z-index:50; overflow:hidden; transform-origin:top left; animation:panelIn .18s ease-out; }
 
+  /* Left-side chat drawer (agentic chat experience) */
+  .chat-drawer {
+    position:absolute; top:0; left:0; bottom:0; width:420px;
+    background:#fafafa; border-right:1px solid var(--border);
+    box-shadow:8px 0 24px rgba(0,0,0,.06);
+    z-index:60;
+    transform:translateX(-100%);
+    transition:transform .25s cubic-bezier(0.22,1,0.36,1);
+    display:flex; flex-direction:column;
+  }
+  .chat-drawer.open { transform:translateX(0); }
+  .chat-header {
+    padding:12px 14px; display:flex; align-items:center; gap:10px;
+    background:#fafafa; border-bottom:1px solid #ececec;
+  }
+  .chat-header .chat-logo {
+    width:26px; height:26px; flex-shrink:0;
+  }
+  .chat-header .chat-logo svg { width:100%; height:100%; }
+  .chat-header .chat-title {
+    flex:1; font-size:14px; font-weight:600; color:#1a1a1a;
+    display:flex; align-items:center; gap:6px; cursor:pointer;
+  }
+  .chat-header .chat-title svg { width:14px; height:14px; opacity:.6; }
+  .chat-header .chat-progress {
+    width:80px; height:6px; background:#e5e5e5; border-radius:3px; overflow:hidden;
+  }
+  .chat-header .chat-progress > div { width:55%; height:100%; background:#2563eb; }
+  .chat-header .chat-collapse {
+    width:28px; height:28px; border:none; background:transparent; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:#5a5a5a; border-radius:6px;
+  }
+  .chat-header .chat-collapse:hover { background:#eee; color:#1a1a1a; }
+  .chat-header .chat-collapse svg { width:16px; height:16px; }
+
+  .chat-body {
+    flex:1; overflow-y:auto; padding:18px 20px 12px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .chat-msg-user {
+    background:#efefef; border-radius:14px; padding:12px 14px;
+    font-size:14px; line-height:1.5; color:#1a1a1a;
+  }
+  .chat-msg-assistant {
+    font-size:14px; line-height:1.55; color:#1a1a1a;
+  }
+  .chat-msg-assistant h3 {
+    font-size:16px; font-weight:700; margin:6px 0 8px;
+  }
+  .chat-msg-assistant p { margin:0 0 12px; }
+  .chat-msg-assistant ul { margin:6px 0 12px; padding-left:20px; }
+  .chat-msg-assistant li { margin-bottom:3px; }
+  .chat-msg-assistant strong { font-weight:600; }
+  .chat-msg-assistant code { background:#f0f0f0; padding:1px 5px; border-radius:4px; font-family:ui-monospace, Menlo, Monaco, monospace; font-size:12.5px; }
+
+  .chat-input-wrap {
+    padding:10px 14px 14px;
+  }
+  .chat-input {
+    background:#fff; border:1px solid #e3e3e3; border-radius:14px;
+    padding:12px 14px 10px;
+    box-shadow:0 1px 2px rgba(0,0,0,.02);
+  }
+  .chat-input .ci-text {
+    width:100%; border:none; outline:none; resize:none;
+    font-size:14px; color:#1a1a1a; min-height:24px; max-height:120px;
+    background:transparent; font-family:inherit;
+  }
+  .chat-input .ci-text::placeholder { color:#9a9a9a; }
+  .chat-input .ci-actions {
+    display:flex; align-items:center; gap:10px; margin-top:8px;
+  }
+  .chat-input .ci-plus {
+    width:28px; height:28px; border:none; background:transparent; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; color:#5a5a5a; border-radius:6px;
+  }
+  .chat-input .ci-plus:hover { background:#f2f2f2; color:#1a1a1a; }
+  .chat-input .ci-plus svg { width:18px; height:18px; }
+  .chat-input .ci-model {
+    margin-left:auto; font-size:12px; color:#6a6a6a;
+    display:inline-flex; align-items:center; gap:4px; cursor:pointer;
+  }
+  .chat-input .ci-model svg { width:12px; height:12px; opacity:.6; }
+  .chat-input .ci-send {
+    width:32px; height:32px; border-radius:50%; border:none; cursor:pointer;
+    background:#2563eb; color:#fff;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .chat-input .ci-send:hover { background:#1d4fd1; }
+  .chat-input .ci-send svg { width:16px; height:16px; }
+
   /* Version history drawer */
   .history-drawer {
     position:absolute; top:0; right:0; bottom:0; width:340px;
@@ -1087,9 +1178,11 @@ function renderHistoryBody() {
       content.innerHTML = `
         <div class="item-time">${it.time}</div>
         <div class="item-desc">${it.desc}</div>
-        ${it.chat ? `<div class="item-extra"><span class="item-chat-link">${chatLinkSvg()} View in chat</span></div>` : ''}
+        ${it.chat ? `<div class="item-extra"><span class="item-chat-link" data-chat="1">${chatLinkSvg()} View in chat</span></div>` : ''}
       `;
       item.appendChild(content);
+      const chatLink = content.querySelector('.item-chat-link');
+      if (chatLink) chatLink.addEventListener('click', (e) => { e.stopPropagation(); openChatDrawer(it); });
 
       // Actions: AI summary + menu
       const actions = document.createElement('div');
@@ -1425,6 +1518,119 @@ function closeHistory() {
   historyDrawer.classList.remove('open');
   const d = historyDrawer;
   historyDrawer = null;
+  setTimeout(() => d.remove(), 250);
+}
+
+// =========== LEFT-SIDE AGENTIC CHAT DRAWER ===========
+let chatDrawer = null;
+
+const chatThreads = {
+  default: {
+    title:'Operation Sundial — fund flow trace',
+    userMsg:`I'm tracing 0.84 BTC from a Coinbase deposit on May 15 that we suspect was paid as ransom. Can you walk the LIFO trace forward and tell me where it ended up?`,
+    assistant:`<h3>Fund flow summary</h3>
+      <p>I traced the <strong>0.84 BTC</strong> from the Coinbase deposit address through <strong>12 outbound hops</strong>. The funds passed through 3 intermediary wallets before terminating at a known mixer.</p>
+      <p>The pattern is consistent: the actor consolidated funds in a fresh wallet, peeled off small change in 2-hop loops, then sent the bulk to <code>Helix Mixer</code>. Roughly <strong>0.012 BTC</strong> was lost to mixer fees and peel chains along the way.</p>
+      <h3>Risk findings</h3>
+      <ul>
+        <li>1 high-risk counterparty matched <strong>OFAC SDN</strong> list (<code>0x4a…e21f</code>)</li>
+        <li>3 downstream wallets show peel-chain characteristics (likely cash-out candidates)</li>
+        <li>Estimated obfuscation cost: <strong>~0.012 BTC</strong> in fees</li>
+      </ul>
+      <h3>Recommended next steps</h3>
+      <ul>
+        <li>Open a sub-investigation for the OFAC match</li>
+        <li>Subscribe to alerts on the 3 peel-chain candidates</li>
+        <li>Generate a SAR-ready narrative from these findings</li>
+      </ul>
+      <p>Want me to pull the full address-by-address breakdown, or jump straight to the SAR draft?</p>`,
+  },
+  ofac: {
+    title:'OFAC counterparty review — 0x4a…e21f',
+    userMsg:`Tell me everything you know about counterparty 0x4a…e21f and why it's flagged. Is this a confirmed sanctions match?`,
+    assistant:`<h3>Match summary</h3>
+      <p>Counterparty <code>0x4a…e21f</code> matches an entry on the <strong>OFAC SDN list</strong> with high confidence (<strong>0.94</strong>). The address has appeared in 3 prior Chainalysis investigations linked to North Korea-affiliated theft.</p>
+      <h3>Activity pattern</h3>
+      <ul>
+        <li>First seen on-chain: <strong>Aug 14, 2024</strong></li>
+        <li>Total received: <strong>~24.8 BTC</strong> across 412 inbound transactions</li>
+        <li>Primary outflow destinations: <code>Helix Mixer</code>, <code>Sinbad</code>, 2 unattributed peel chains</li>
+        <li>Most recent activity: <strong>May 17, 2026</strong> (3 days ago)</li>
+      </ul>
+      <h3>Why it's flagged</h3>
+      <p>The cluster behavior (rapid peel chains, mixer routing, dormant intervals followed by burst activity) matches the heuristic profile of <strong>Lazarus Group</strong> infrastructure. Two upstream counterparties have direct attribution to known DPRK theft incidents.</p>
+      <p>Want me to add this counterparty to your case watchlist or pull the linked investigations?</p>`,
+  },
+  peel: {
+    title:'Peel-chain pattern analysis',
+    userMsg:`I see you flagged 3 peel-chain candidates downstream of the mixer. Which is highest priority and why?`,
+    assistant:`<h3>Top priority: 0xc1…78bd</h3>
+      <p>Of the 3 peel-chain candidates, <code>0xc1…78bd</code> is the highest priority. It's already received <strong>0.41 BTC</strong> from the mixer output across 7 small transactions over the last 48 hours — consistent with an active cash-out in progress.</p>
+      <h3>Why this one ranks highest</h3>
+      <ul>
+        <li><strong>Recency:</strong> active in the last 6 hours (the other 2 are dormant)</li>
+        <li><strong>Exchange exposure:</strong> 2 hops away from a Tier-1 exchange deposit address</li>
+        <li><strong>Velocity:</strong> outflow rate of ~0.06 BTC/hour, suggests automated tooling</li>
+      </ul>
+      <p>If you want to act, the fastest path is a <strong>real-time alert subscription</strong> + an exchange notice through your VASP intake channel. Want me to set up the alert and draft the notice?</p>`,
+  },
+};
+
+function pickChatThread(item) {
+  const d = (item && item.desc) ? item.desc.toLowerCase() : '';
+  if (d.includes('ofac') || d.includes('high risk')) return chatThreads.ofac;
+  if (d.includes('peel')) return chatThreads.peel;
+  return chatThreads.default;
+}
+
+function openChatDrawer(item) {
+  if (chatDrawer) { closeChatDrawer(); }
+  const t = pickChatThread(item);
+  chatDrawer = document.createElement('div');
+  chatDrawer.className = 'chat-drawer';
+  chatDrawer.innerHTML = `
+    <div class="chat-header">
+      <div class="chat-logo">
+        <svg viewBox="0 0 100 100" fill="none">
+          <circle cx="50" cy="50" r="48" fill="#ff5b2e"/>
+          <g stroke="#fff" stroke-width="9" stroke-linecap="round" fill="none">
+            <g transform="rotate(0 50 50)"><path d="M 50 22 A 28 28 0 1 0 50 78"/><path d="M 50 50 L 28 50"/></g>
+            <g transform="rotate(120 50 50)"><path d="M 50 22 A 28 28 0 1 0 50 78"/><path d="M 50 50 L 28 50"/></g>
+            <g transform="rotate(240 50 50)"><path d="M 50 22 A 28 28 0 1 0 50 78"/><path d="M 50 50 L 28 50"/></g>
+          </g>
+        </svg>
+      </div>
+      <div class="chat-title">${escapeHtml(t.title)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="chat-progress"><div></div></div>
+      <button class="chat-collapse" id="chatCollapse" title="Close chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+      </button>
+    </div>
+    <div class="chat-body">
+      <div class="chat-msg-user">${escapeHtml(t.userMsg)}</div>
+      <div class="chat-msg-assistant">${t.assistant}</div>
+    </div>
+    <div class="chat-input-wrap">
+      <div class="chat-input">
+        <textarea class="ci-text" placeholder="Reply..." rows="1"></textarea>
+        <div class="ci-actions">
+          <button class="ci-plus" title="Attach"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></button>
+          <span class="ci-model">Opus 4.6 (Reasoning) <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <button class="ci-send" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg></button>
+        </div>
+      </div>
+    </div>
+  `;
+  main.appendChild(chatDrawer);
+  chatDrawer.querySelector('#chatCollapse').addEventListener('click', closeChatDrawer);
+  requestAnimationFrame(() => chatDrawer.classList.add('open'));
+}
+
+function closeChatDrawer() {
+  if (!chatDrawer) return;
+  chatDrawer.classList.remove('open');
+  const d = chatDrawer;
+  chatDrawer = null;
   setTimeout(() => d.remove(), 250);
 }
 
