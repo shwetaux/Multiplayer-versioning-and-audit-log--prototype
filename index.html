@@ -25,7 +25,7 @@
   .tab.active::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--accent); border-radius:2px 2px 0 0; }
   .tab:hover:not(.active) { color:#1a1a1a; }
   .topbar-right { margin-left:auto; display:flex; align-items:center; gap:8px; }
-  .topbar-right .you-avatar { width:30px; height:30px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .topbar-right .you-avatar { width:30px; height:30px; border-radius:50%; background:var(--accent); color:#fff; font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; cursor:pointer; background-size:cover; background-position:center; overflow:hidden; }
 
   /* Sub toolbar (second row) */
   .subbar { height:48px; border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 20px; gap:12px; background:#fff; position:relative; z-index:29; }
@@ -41,7 +41,7 @@
   .avatar-stack { display:flex; }
   .avatar-chevron { width:18px; height:18px; display:flex; align-items:center; justify-content:center; color:#6a6a6a; background:transparent; border:none; cursor:pointer; padding:0; }
   .avatar-chevron svg { width:14px; height:14px; }
-  .avatar { width:26px; height:26px; border-radius:50%; border:2px solid #fff; margin-left:-6px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:600; cursor:pointer; position:relative; transition:transform .2s, opacity .3s; }
+  .avatar { width:26px; height:26px; border-radius:50%; border:2px solid #fff; margin-left:-6px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:11px; font-weight:600; cursor:pointer; position:relative; transition:transform .2s, opacity .3s; background-size:cover; background-position:center; overflow:hidden; }
   .avatar:first-child { margin-left:0; }
   .avatar:hover { transform:translateY(-2px); z-index:5; }
   .avatar.live::after { content:''; position:absolute; bottom:-1px; right:-1px; width:8px; height:8px; background:#10b981; border:2px solid #fff; border-radius:50%; }
@@ -188,7 +188,7 @@
     </div>
     <div class="topbar-right">
       <button class="icon-btn" title="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></button>
-      <div class="you-avatar" title="You">JL</div>
+      <div class="you-avatar" id="topYouAvatar" title="You"></div>
     </div>
   </div>
   <div class="subbar">
@@ -238,13 +238,13 @@
 
 <script>
 const users = [
-  { id:'tom',  name:'Tom Martin', color:'#ef4444', initials:'TM' },
-  { id:'adam', name:'Adam H',     color:'#3b82f6', initials:'AH' },
-  { id:'sara', name:'Sara Chen',  color:'#10b981', initials:'SC' },
-  { id:'mike', name:'Mike Lopez', color:'#8b5cf6', initials:'ML' },
-  { id:'kira', name:'Kira Patel', color:'#f59e0b', initials:'KP' },
+  { id:'tom',  name:'Tom Martin', color:'#ef4444', initials:'TM', avatar:'https://i.pravatar.cc/96?img=33' },
+  { id:'adam', name:'Adam H',     color:'#3b82f6', initials:'AH', avatar:'https://i.pravatar.cc/96?img=8'  },
+  { id:'sara', name:'Sara Chen',  color:'#10b981', initials:'SC', avatar:'https://i.pravatar.cc/96?img=47' },
+  { id:'mike', name:'Mike Lopez', color:'#8b5cf6', initials:'ML', avatar:'https://i.pravatar.cc/96?img=60' },
+  { id:'kira', name:'Kira Patel', color:'#f59e0b', initials:'KP', avatar:'https://i.pravatar.cc/96?img=5'  },
 ];
-const currentUser = { id:'you', name:'You', color:'#ff5b2e', initials:'Y' };
+const currentUser = { id:'you', name:'You', color:'#ff5b2e', initials:'Y', avatar:'https://i.pravatar.cc/96?img=12' };
 
 const nodes = [
   { id:'n0', x:600,  y:950,  label:'Coinbase.com' },
@@ -348,14 +348,24 @@ const avatarStack = document.getElementById('avatarStack');
 const tooltip = document.getElementById('tooltip');
 const visibleUserIds = new Set(['you']);
 
+function styleAvatar(el, u) {
+  if (u.avatar) {
+    el.style.backgroundImage = `url("${u.avatar}")`;
+    el.style.backgroundColor = u.color;
+    el.textContent = '';
+  } else {
+    el.style.backgroundColor = u.color;
+    el.textContent = u.initials;
+  }
+}
+
 function renderAvatars() {
   avatarStack.innerHTML = '';
   const order = users.filter(u => visibleUserIds.has(u.id)).concat([currentUser]);
   order.forEach(u => {
     const a = document.createElement('div');
     a.className = 'avatar entering' + (u.id !== 'you' ? ' live' : '');
-    a.style.background = u.color;
-    a.textContent = u.initials;
+    styleAvatar(a, u);
     a.dataset.id = u.id;
     a.addEventListener('mouseenter', () => {
       const r = a.getBoundingClientRect();
@@ -369,6 +379,7 @@ function renderAvatars() {
   });
 }
 renderAvatars();
+styleAvatar(document.getElementById('topYouAvatar'), currentUser);
 
 // ============== CURSORS (no autoplay) ==============
 const cursorEls = {};
@@ -445,7 +456,7 @@ function openPanel() {
   panel.className = 'spotlight-panel';
   panel.innerHTML = `
     <div class="panel-you">
-      <div class="avatar" style="background:${currentUser.color}">${currentUser.initials}</div>
+      <div class="avatar" data-uid="${currentUser.id}"></div>
       <div class="you-name">${currentUser.name} <span style="color:var(--muted);font-weight:400">(you)</span></div>
       <button class="spotlight-me-btn ${meSpotlighting?'on':''}" id="meToggle">${meSpotlighting?'Spotlighting':'Spotlight me'}</button>
     </div>
@@ -459,6 +470,12 @@ function openPanel() {
     </div>
   `;
   main.appendChild(panel);
+  // hydrate panel-you avatar
+  panel.querySelectorAll('.avatar[data-uid]').forEach(el => {
+    const uid = el.dataset.uid;
+    const u = uid === 'you' ? currentUser : users.find(x => x.id === uid);
+    if (u) styleAvatar(el, u);
+  });
   renderPanelLists();
   document.getElementById('meToggle').addEventListener('click', toggleMeSpotlight);
 }
@@ -477,13 +494,14 @@ function renderPanelLists() {
     const row = document.createElement('div');
     row.className = 'user-row' + (isFollowing ? ' active' : '') + (highlightUserId === u.id ? ' highlight' : '');
     row.innerHTML = `
-      <div class="avatar" style="background:${u.color}">${u.initials}</div>
+      <div class="avatar" data-uid="${u.id}"></div>
       <div class="user-info">
         <div class="user-name">${u.name}</div>
         <div class="user-meta">${isFollowing ? 'You are following' : 'Click to follow'}</div>
       </div>
       ${isFollowing ? '<div class="following-badge">Following</div>' : '<div class="row-more"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg></div>'}
     `;
+    styleAvatar(row.querySelector('.avatar'), u);
     row.addEventListener('click', () => {
       if (isFollowing) stopSpotlight();
       else startSpotlight(u);
@@ -499,12 +517,13 @@ function renderPanelLists() {
       const row = document.createElement('div');
       row.className = 'user-row dim';
       row.innerHTML = `
-        <div class="avatar" style="background:${u.color}">${u.initials}</div>
+        <div class="avatar" data-uid="${u.id}"></div>
         <div class="user-info">
           <div class="user-name">${u.name}</div>
           <div class="user-meta">left a moment ago</div>
         </div>
       `;
+      styleAvatar(row.querySelector('.avatar'), u);
       prev.appendChild(row);
     });
   }
