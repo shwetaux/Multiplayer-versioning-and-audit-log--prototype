@@ -175,10 +175,58 @@
     position:relative;
     display:flex; gap:12px; align-items:flex-start;
     padding:8px 16px 8px 18px;
-    cursor:default;
+    cursor:pointer;
     transition:background .12s;
   }
   .history-item:hover { background:#f7f7f7; }
+  .history-item.viewing { background:#eef3ff; }
+  .history-item.viewing::before {
+    content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:#3b82f6;
+  }
+
+  /* Read-only viewing banner + canvas lock */
+  .readonly-banner {
+    position:absolute; top:0; left:0; right:0; z-index:90;
+    background:#1a1a1a; color:#fff;
+    display:flex; align-items:center; gap:12px;
+    padding:10px 18px; font-size:13px;
+    transform:translateY(-100%); transition:transform .25s ease;
+    box-shadow:0 2px 8px rgba(0,0,0,.18);
+  }
+  .readonly-banner.show { transform:translateY(0); }
+  .readonly-banner .rb-eye { width:18px; height:18px; flex-shrink:0; color:#ffb37a; }
+  .readonly-banner .rb-text { flex:1; }
+  .readonly-banner .rb-title { font-weight:600; }
+  .readonly-banner .rb-sub { color:#bdbdbd; font-size:12px; margin-top:2px; }
+  .readonly-banner button {
+    background:transparent; color:#fff; border:1px solid #4a4a4a;
+    padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;
+  }
+  .readonly-banner button:hover { background:#2a2a2a; }
+  .readonly-banner button.primary {
+    background:linear-gradient(135deg, #ff8a3d 0%, #ff5b2e 60%, #e6356b 100%);
+    border-color:transparent; color:#fff;
+  }
+  .readonly-banner button.primary:hover { filter:brightness(1.05); }
+
+  .canvas-lock-overlay {
+    position:absolute; inset:0; z-index:85; pointer-events:auto;
+    background:rgba(0,0,0,0.04);
+  }
+  body.readonly-mode .nav, body.readonly-mode .toolbar,
+  body.readonly-mode .canvas { pointer-events:none; }
+  body.readonly-mode .history-drawer { pointer-events:auto; }
+  body.readonly-mode .readonly-banner { pointer-events:auto; }
+  body.readonly-mode .canvas { filter:saturate(0.85); }
+
+  .restore-toast {
+    position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
+    background:#1a1a1a; color:#fff; padding:12px 18px; border-radius:8px;
+    display:flex; align-items:center; gap:10px; font-size:13px;
+    box-shadow:0 6px 20px rgba(0,0,0,.25); z-index:200;
+    animation:panelIn .2s ease-out;
+  }
+  .restore-toast svg { width:18px; height:18px; color:#10b981; }
   .item-avatar-wrap { position:relative; flex-shrink:0; }
   .item-avatar {
     width:36px; height:36px; border-radius:50%;
@@ -783,6 +831,9 @@ let collapsedGroups = new Set(); // group names that are collapsed (default: all
 
 let historyDrawer = null;
 let filterMenu = null;
+let viewingVersion = null;       // {time, desc, ...} currently being viewed in read-only mode
+let readonlyBanner = null;
+let canvasLockOverlay = null;
 
 const filterIcons = {
   all: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 14a3 3 0 0 0 5.2 2"/><polyline points="9 14 9 17 12 17"/></svg>`,
@@ -854,6 +905,15 @@ function renderHistoryBody() {
     grp.items.forEach(it => {
       const item = document.createElement('div');
       item.className = 'history-item';
+      if (viewingVersion && viewingVersion.time === it.time && viewingVersion.desc === it.desc) {
+        item.classList.add('viewing');
+      }
+      if (!it.current) {
+        item.addEventListener('click', (e) => {
+          if (e.target.closest('.item-menu-btn') || e.target.closest('.item-ai-btn') || e.target.closest('.item-chat-link')) return;
+          enterReadOnlyMode(it);
+        });
+      }
 
       // Avatar
       const avatarWrap = document.createElement('div');
@@ -972,12 +1032,9 @@ function openItemPopover(anchor, item) {
   pop.querySelectorAll('.popover-action').forEach(a => a.addEventListener('click', (e) => {
     e.stopPropagation();
     const act = a.dataset.act;
+    closeItemPopover();
     if (act === 'restore') {
-      a.textContent = 'Restored ✓';
-      a.style.color = 'var(--accent)';
-      setTimeout(() => { closeItemPopover(); closeHistory(); }, 600);
-    } else {
-      closeItemPopover();
+      restoreVersion(item);
     }
   }));
 }
@@ -1115,6 +1172,81 @@ function closeHistory() {
   historyDrawer = null;
   setTimeout(() => d.remove(), 250);
 }
+
+function enterReadOnlyMode(item) {
+  viewingVersion = item;
+  document.body.classList.add('readonly-mode');
+
+  // Canvas overlay to absorb pointer events
+  if (!canvasLockOverlay) {
+    canvasLockOverlay = document.createElement('div');
+    canvasLockOverlay.className = 'canvas-lock-overlay';
+    main.appendChild(canvasLockOverlay);
+  }
+
+  // Top banner
+  if (!readonlyBanner) {
+    readonlyBanner = document.createElement('div');
+    readonlyBanner.className = 'readonly-banner';
+    main.appendChild(readonlyBanner);
+  }
+  const groupLabel = currentGroupLabelFor(item);
+  readonlyBanner.innerHTML = `
+    <svg class="rb-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    <div class="rb-text">
+      <div class="rb-title">You're viewing a historical version &nbsp;·&nbsp; Read only</div>
+      <div class="rb-sub">${groupLabel} · ${item.time} — ${escapeHtml(item.desc)}</div>
+    </div>
+    <button id="rbRestoreBtn" class="primary">Restore this version</button>
+    <button id="rbExitBtn">Back to current version</button>
+  `;
+  requestAnimationFrame(() => readonlyBanner.classList.add('show'));
+  readonlyBanner.querySelector('#rbRestoreBtn').addEventListener('click', () => restoreVersion(item));
+  readonlyBanner.querySelector('#rbExitBtn').addEventListener('click', exitReadOnlyMode);
+
+  if (historyDrawer) renderHistoryBody(); // re-render to highlight viewing item
+}
+
+function exitReadOnlyMode() {
+  viewingVersion = null;
+  document.body.classList.remove('readonly-mode');
+  if (readonlyBanner) {
+    readonlyBanner.classList.remove('show');
+    const b = readonlyBanner; readonlyBanner = null;
+    setTimeout(() => b.remove(), 250);
+  }
+  if (canvasLockOverlay) { canvasLockOverlay.remove(); canvasLockOverlay = null; }
+  if (historyDrawer) renderHistoryBody();
+}
+
+function restoreVersion(item) {
+  exitReadOnlyMode();
+  closeHistory();
+  showRestoreToast(`Restored to "${item.desc}" (${item.time})`);
+}
+
+function currentGroupLabelFor(item) {
+  for (const g of versionHistory) {
+    if (g.items.some(i => i.time === item.time && i.desc === item.desc)) return g.group;
+  }
+  return '';
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function showRestoreToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'restore-toast';
+  t.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+    ${escapeHtml(msg)}
+  `;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity .3s'; }, 2400);
+  setTimeout(() => t.remove(), 2800);
+}
 document.getElementById('savedLabel').addEventListener('click', (e) => {
   e.stopPropagation();
   historyDrawer ? closeHistory() : openHistory();
@@ -1126,6 +1258,7 @@ document.addEventListener('mousedown', (e) => {
   if (!historyDrawer) return;
   if (historyDrawer.contains(e.target)) return;
   if (document.getElementById('savedLabel').contains(e.target)) return;
+  if (readonlyBanner && readonlyBanner.contains(e.target)) return;
   closeHistory();
 });
 
