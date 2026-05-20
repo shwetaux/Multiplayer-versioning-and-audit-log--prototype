@@ -389,8 +389,27 @@
     background-size:cover; background-position:center;
   }
   .item-content { flex:1; min-width:0; padding-top:1px; }
-  .item-time { font-size:14px; font-weight:600; color:#1a1a1a; line-height:1.25; }
+  .item-time-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; line-height:1.25; }
+  .item-time { font-size:14px; font-weight:600; color:#1a1a1a; }
   .item-desc { font-size:13px; color:#7a7a7a; margin-top:2px; line-height:1.3; }
+  .kind-pill {
+    display:inline-flex; align-items:center; gap:3px;
+    font-size:10px; font-weight:600; line-height:1;
+    padding:3px 7px; border-radius:10px;
+    text-transform:uppercase; letter-spacing:.3px;
+  }
+  .kind-pill.kind-det { background:#eef1f5; color:#5a6478; }
+  .kind-pill.kind-ai { background:#fde7d6; color:#b54a18; }
+  .kind-pill.named-pill {
+    background:#f3edff; color:#5a3aaa; text-transform:none; letter-spacing:0;
+    font-weight:600;
+  }
+  .history-subheader {
+    padding:8px 16px 10px;
+    font-size:11px; color:#8a8a8a;
+    border-bottom:1px solid var(--border);
+    background:#fafafa;
+  }
   .item-extra { display:flex; align-items:center; gap:14px; margin-top:6px; }
   .item-chat-link { display:inline-flex; align-items:center; gap:5px; color:#5a4cf4; font-size:12px; font-weight:500; cursor:pointer; }
   .item-chat-link svg { width:14px; height:14px; }
@@ -464,6 +483,63 @@
   }
   .sum-question:hover { background:#f7f7f7; }
   .sum-question svg { width:16px; height:16px; color:var(--muted); flex-shrink:0; margin-top:1px; }
+
+  /* Agent reasoning chain (for LLM items) */
+  .reason-meta {
+    display:flex; align-items:center; gap:8px;
+    font-size:12px; color:var(--muted);
+    margin:8px 0 14px;
+  }
+  .reason-meta strong { color:#3a3a3a; font-weight:600; }
+  .reason-chain { display:flex; flex-direction:column; }
+  .reason-step { display:flex; gap:12px; align-items:stretch; }
+  .reason-step-rail {
+    width:28px; flex-shrink:0; position:relative;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .reason-step-dot {
+    width:28px; height:28px; border-radius:50%;
+    background:linear-gradient(135deg, #ff8a3d 0%, #ff5b2e 60%, #e6356b 100%);
+    color:#fff; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; z-index:1; margin-top:14px;
+  }
+  .reason-step-dot svg { width:14px; height:14px; }
+  .reason-step:not(:last-child) .reason-step-rail::after {
+    content:''; position:absolute;
+    left:50%; top:42px; bottom:-8px;
+    width:1.5px; background:#e3e3e3; transform:translateX(-50%);
+  }
+  .reason-step-card {
+    flex:1; min-width:0; margin-bottom:14px;
+    border:1px solid var(--border); border-radius:10px;
+    padding:12px 14px;
+  }
+  .reason-step-kind {
+    font-size:10px; font-weight:700; color:#b54a18;
+    text-transform:uppercase; letter-spacing:.4px;
+    margin-bottom:4px;
+  }
+  .reason-step.reason-result .reason-step-kind { color:#0f7a3a; }
+  .reason-step.reason-claim  .reason-step-kind { color:#5a3aaa; }
+  .reason-step.reason-source .reason-step-kind { color:#5a6478; }
+  .reason-step.reason-result .reason-step-dot { background:linear-gradient(135deg, #34d27f 0%, #10b981 100%); }
+  .reason-step.reason-claim  .reason-step-dot { background:linear-gradient(135deg, #a98bff 0%, #5a3aaa 100%); }
+  .reason-step.reason-source .reason-step-dot { background:linear-gradient(135deg, #b8c2d4 0%, #5a6478 100%); }
+  .reason-step-title {
+    font-size:14px; font-weight:600; color:#1a1a1a; margin-bottom:6px; line-height:1.35;
+  }
+  .reason-step-detail {
+    font-size:13px; color:#3a3a3a; line-height:1.5;
+  }
+  .reason-step-detail code {
+    background:#f3f3f3; padding:1px 5px; border-radius:4px;
+    font-family:ui-monospace, Menlo, Monaco, monospace; font-size:12px;
+  }
+  .reason-sources { margin-top:10px; font-size:12px; color:var(--muted); }
+  .reason-sources summary { cursor:pointer; color:#4a5cf6; font-weight:500; outline:none; }
+  .reason-sources summary:hover { text-decoration:underline; }
+  .reason-sources ul { margin:6px 0 0; padding-left:18px; }
+  .reason-sources li { color:#3a3a3a; margin-bottom:2px; }
 
   .sum-footer {
     position:sticky; bottom:0; background:#fff;
@@ -1022,12 +1098,12 @@ const versionHistory = [
     { time:'1:30 PM',  desc:'LIFO traced 12 hops from Coinbase deposit',                     actor:'automation', actorId:'you' },
     { time:'11:30 AM', desc:'Summarized fund flow into Helix Mixer',                         actor:'llm',        actorId:'you',  chat:true },
     { time:'10:48 AM', desc:'2 clusters attributed to Binance Hot Wallet 14',                actor:'data' },
-    { time:'9:12 AM',  desc:'Added 4 wallets to "Suspect cluster A"',                        actor:'user',       actorId:'tom' },
+    { time:'9:12 AM',  desc:'Added 4 wallets to "Suspect cluster A"',                        actor:'user',       actorId:'tom',  named:'Before adding cluster A' },
     { time:'8:04 AM',  desc:'Auto-saved layout changes',                                     actor:'user',       actorId:'you',  autoSaved:true },
   ]},
   { group:'Yesterday', items: [
     { time:'6:14 PM',  desc:'Renamed "Helix Mixer" terminal node',                           actor:'user',       actorId:'adam' },
-    { time:'4:32 PM',  desc:'Tagged 6 counterparties as "High risk"',                        actor:'user',       actorId:'sara' },
+    { time:'4:32 PM',  desc:'Tagged 6 counterparties as "High risk"',                        actor:'user',       actorId:'sara', named:'Pre-attorney review' },
     { time:'3:10 PM',  desc:'Drafted narrative: "Peel chain pattern detected"',              actor:'llm',        actorId:'you',  chat:true },
     { time:'1:48 PM',  desc:'Peel chain workflow expanded 8 outbound hops',                  actor:'automation', actorId:'mike' },
     { time:'11:08 AM', desc:'Refreshed balances for 27 addresses',                           actor:'data' },
@@ -1052,7 +1128,7 @@ const versionHistory = [
     { time:'8:15 AM', desc:'Sync workflow refreshed 1,204 tx records',                       actor:'automation' },
     { time:'7:02 AM', desc:'Generated executive summary of investigation',                   actor:'llm' },
     { time:'6:18 AM', desc:'2 clusters attributed to Bitfinex Hot Wallet',                   actor:'data' },
-    { time:'5:00 AM', desc:'Initial save — investigation "Operation Sundial" created',      actor:'user',       actorId:'you',  autoSaved:true },
+    { time:'5:00 AM', desc:'Initial save — investigation "Operation Sundial" created',      actor:'user',       actorId:'you',  named:'Initial' },
   ]},
 ];
 
@@ -1185,8 +1261,15 @@ function renderHistoryBody() {
       // Content
       const content = document.createElement('div');
       content.className = 'item-content';
+      const detKind = (it.actor === 'llm') ? 'ai' : 'det';
+      const detLabel = (it.actor === 'llm') ? 'AI inference' : 'Deterministic';
+      const namedPill = it.named ? `<span class="kind-pill named-pill" title="Named version">★ ${escapeHtml(it.named)}</span>` : '';
       content.innerHTML = `
-        <div class="item-time">${it.time}</div>
+        <div class="item-time-row">
+          <span class="item-time">${it.time}</span>
+          <span class="kind-pill kind-${detKind}">${detLabel}</span>
+          ${namedPill}
+        </div>
         <div class="item-desc">${it.desc}</div>
         ${it.chat ? `<div class="item-extra"><span class="item-chat-link" data-chat="1">${chatLinkSvg()} View in chat</span></div>` : ''}
       `;
@@ -1353,6 +1436,111 @@ const aiSummariesDetailed = {
 };
 // Legacy shape used elsewhere (kept for backwards compatibility)
 const aiSummaries = Object.fromEntries(Object.entries(aiSummariesDetailed).map(([k,v]) => [k, v.sections.flatMap(s => s.bullets)]));
+
+// Structured agent reasoning chains, keyed by item description fragment
+const agentReasoning = {
+  default: {
+    model: 'Opus 4.6 (Reasoning)',
+    runtime: '4.2s',
+    steps: [
+      {
+        kind:'action',
+        title:'Walk LIFO trace from Coinbase deposit',
+        detail:'Called <code>trace.lifo({ root: 0x9ac…3da7, depth: 20 })</code> to follow the most recent inputs forward through 12 hops.',
+        sources:['Address 0x9ac…3da7 (Coinbase deposit, May 15)', 'Chain: BTC mainnet', 'Tool: trace.lifo v3.2'],
+      },
+      {
+        kind:'result',
+        title:'12 hops, terminated at known mixer',
+        detail:'Returned a path of 12 addresses ending at <code>Helix Mixer</code> (cluster_id <code>cl_helix_001</code>). 0.84 BTC moved end-to-end; 0.012 BTC lost to peel chains and mixer fees.',
+        sources:['trace.lifo result #t-1042', '7 intermediate addresses', 'Cluster cl_helix_001 (Helix Mixer)'],
+      },
+      {
+        kind:'claim',
+        title:'Funds were intentionally obfuscated via mixer',
+        detail:'Inferred from: (1) consistent peel-chain pattern across all 7 intermediaries, (2) terminal address in a known-mixer cluster, (3) timing of consolidation (all hops within 38 minutes).',
+        sources:['Path shape heuristic (peel-chain detector v2)', 'Cluster attribution from chain.intel'],
+      },
+      {
+        kind:'source',
+        title:'Data inputs used',
+        detail:'All facts grounded in deterministic chain data and labeled clusters. No external web sources used.',
+        sources:[
+          'BTC mainnet tx records (chain.intel snapshot 2026-05-20T14:30Z)',
+          'Cluster attribution: chain.intel v18',
+          'Peel-chain heuristic: detector v2 (deterministic)',
+          'Prior audit entry: LIFO workflow run at 1:30 PM (deterministic)',
+        ],
+      },
+    ],
+  },
+  ofac: {
+    model: 'Opus 4.6 (Reasoning)',
+    runtime: '2.8s',
+    steps: [
+      {
+        kind:'action',
+        title:'Cross-reference counterparty against OFAC SDN list',
+        detail:'Called <code>sanctions.match({ address: 0x4a…e21f, list: "OFAC_SDN" })</code> + queried prior Chainalysis investigations.',
+        sources:['Address 0x4a…e21f', 'OFAC SDN snapshot 2026-05-19', 'Prior investigation DB (3 hits)'],
+      },
+      {
+        kind:'result',
+        title:'High-confidence match (0.94) on SDN entry',
+        detail:'Match returned with confidence 0.94. Address appears in 3 prior investigations tagged Lazarus Group.',
+        sources:['Match record m-9921', '3 prior investigation IDs'],
+      },
+      {
+        kind:'claim',
+        title:'Counterparty is DPRK-affiliated with high confidence',
+        detail:'Inferred from: (1) direct SDN match, (2) repeat appearance in prior DPRK cases, (3) cluster behavior matching Lazarus heuristic profile.',
+        sources:['SDN match m-9921', 'Lazarus heuristic profile v4'],
+      },
+      {
+        kind:'source',
+        title:'Data inputs used',
+        detail:'All facts from deterministic lookups; no LLM speculation in the match itself — only the narrative framing.',
+        sources:['OFAC SDN list (2026-05-19)', 'Internal investigation DB', 'Lazarus heuristic v4 (deterministic)'],
+      },
+    ],
+  },
+  peel: {
+    model: 'Opus 4.6 (Reasoning)',
+    runtime: '3.6s',
+    steps: [
+      {
+        kind:'action',
+        title:'Score downstream addresses for peel-chain likelihood',
+        detail:'Ran <code>peel.score</code> over 14 candidate addresses 1–3 hops downstream of the mixer.',
+        sources:['14 downstream addresses', 'Peel-chain scorer v2 (deterministic)'],
+      },
+      {
+        kind:'result',
+        title:'3 addresses scored above 0.75 threshold',
+        detail:'Highest: <code>0xc1…78bd</code> (0.91), already receiving from mixer in last 48h.',
+        sources:['Score result r-7711', 'Recent activity log for 0xc1…78bd'],
+      },
+      {
+        kind:'claim',
+        title:'0xc1…78bd is highest priority — likely active cash-out',
+        detail:'Inferred from: recency (active in last 6h), exchange proximity (2 hops to Tier-1 deposit), velocity (~0.06 BTC/hour).',
+        sources:['Activity log', 'Exchange proximity graph', 'Velocity calculation (deterministic)'],
+      },
+      {
+        kind:'source',
+        title:'Data inputs used',
+        detail:'Scoring and priority ranking are deterministic; the natural-language ranking explanation is LLM-generated.',
+        sources:['peel.score v2', 'Exchange address registry', 'Real-time tx feed'],
+      },
+    ],
+  },
+};
+function pickReasoning(item) {
+  const d = (item.desc || '').toLowerCase();
+  if (d.includes('ofac') || d.includes('high risk')) return agentReasoning.ofac;
+  if (d.includes('peel')) return agentReasoning.peel;
+  return agentReasoning.default;
+}
 function openAiSummaryPanel(item) {
   closeItemPopover();
   if (!historyDrawer) return;
@@ -1369,7 +1557,7 @@ function openAiSummaryPanel(item) {
     <span class="summary-head-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="14" y2="6"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/><path d="M18 14l1.2 2.4L21.6 17.6 19.2 18.8 18 21.2 16.8 18.8 14.4 17.6 16.8 16.4z" fill="currentColor" stroke="none"/></svg>
     </span>
-    <div class="summary-head-title">Summary of changes</div>
+    <div class="summary-head-title">${item.actor === 'llm' ? 'Agent reasoning' : 'Summary of changes'}</div>
     <button class="history-close" id="historyClose" title="Close">${filterIcons.close}</button>
   `;
   header.querySelector('#summaryBack').addEventListener('click', restoreHistoryHeader);
@@ -1405,15 +1593,57 @@ function openAiSummaryPanel(item) {
 
   const body = historyDrawer.querySelector('#historyBody');
   body.classList.add('summary-mode');
+
+  let mainContent;
+  if (item.actor === 'llm') {
+    const r = pickReasoning(item);
+    const stepIcons = {
+      action: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+      result: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+      claim:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l1.6 4.4L18 8l-4.4 1.6L12 14l-1.6-4.4L6 8z"/></svg>`,
+      source: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/></svg>`,
+    };
+    const stepsHtml = r.steps.map((s,i) => `
+      <div class="reason-step reason-${s.kind}" data-idx="${i}">
+        <div class="reason-step-rail">
+          <span class="reason-step-dot">${stepIcons[s.kind] || ''}</span>
+        </div>
+        <div class="reason-step-card">
+          <div class="reason-step-kind">${s.kind}</div>
+          <div class="reason-step-title">${escapeHtml(s.title)}</div>
+          <div class="reason-step-detail">${s.detail}</div>
+          <details class="reason-sources">
+            <summary>Inspect sources (${s.sources.length})</summary>
+            <ul>${s.sources.map(src => `<li>${escapeHtml(src)}</li>`).join('')}</ul>
+          </details>
+        </div>
+      </div>
+    `).join('');
+    mainContent = `
+      <div class="sum-meta">${escapeHtml(asof)} · ${escapeHtml(item.desc)}</div>
+      ${actorChip}
+      <div class="reason-meta">
+        <span><strong>Model:</strong> ${escapeHtml(r.model)}</span>
+        <span>·</span>
+        <span><strong>Runtime:</strong> ${escapeHtml(r.runtime)}</span>
+      </div>
+      <div class="reason-chain">${stepsHtml}</div>
+    `;
+  } else {
+    mainContent = `
+      <div class="sum-meta">${escapeHtml(asof)} · ${escapeHtml(item.desc)}</div>
+      ${actorChip}
+      <div class="sum-sections">${sectionsHtml}</div>
+      ${questionsHtml ? `<div class="sum-questions">${questionsHtml}</div>` : ''}
+    `;
+  }
+
   body.innerHTML = `
-    <div class="sum-meta">${escapeHtml(asof)} · ${escapeHtml(item.desc)}</div>
-    ${actorChip}
-    <div class="sum-sections">${sectionsHtml}</div>
-    ${questionsHtml ? `<div class="sum-questions">${questionsHtml}</div>` : ''}
+    ${mainContent}
     <div class="sum-footer">
       <span class="sum-footer-left">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-        Uses AI. Verify results.
+        ${item.actor === 'llm' ? 'Agent reasoning. Inspect sources before relying on claims.' : 'Uses AI. Verify results.'}
       </span>
       <span class="sum-footer-actions">
         <button title="Helpful"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg></button>
@@ -1433,7 +1663,7 @@ function restoreHistoryHeader() {
       ${filterIcons.all}
       <span id="filterBtnLabel">${filterLabel()}</span>
     </button>
-    <div class="history-title" style="text-align:right;font-size:13px;color:var(--muted);font-weight:500;">Version history</div>
+    <div class="history-title" style="text-align:right;font-size:13px;color:var(--muted);font-weight:500;">Activity log</div>
     <button class="history-close" id="historyClose" title="Close">${filterIcons.close}</button>
   `;
   header.querySelector('#historyClose').addEventListener('click', closeHistory);
@@ -1511,9 +1741,10 @@ function openHistory() {
         ${filterIcons.all}
         <span id="filterBtnLabel">${filterLabel()}</span>
       </button>
-      <div class="history-title" style="text-align:right;font-size:13px;color:var(--muted);font-weight:500;">Version history</div>
+      <div class="history-title" style="text-align:right;font-size:13px;color:var(--muted);font-weight:500;">Activity log</div>
       <button class="history-close" id="historyClose" title="Close">${filterIcons.close}</button>
     </div>
+    <div class="history-subheader">Every change is recorded automatically · append-only</div>
     <div class="history-body" id="historyBody"></div>
   `;
   main.appendChild(historyDrawer);
