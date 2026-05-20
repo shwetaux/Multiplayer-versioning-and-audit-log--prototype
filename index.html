@@ -184,7 +184,27 @@
     content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:#3b82f6;
   }
 
-  /* Read-only viewing banner + canvas lock */
+  /* Read-only chips in the subbar */
+  .readonly-pill {
+    display:none; align-items:center; gap:6px;
+    background:#dbe5ff; color:#2a4bd6;
+    padding:4px 10px; border-radius:14px;
+    font-size:12px; font-weight:600;
+    cursor:default; position:relative;
+  }
+  .asof-chip {
+    display:none; align-items:center; gap:6px;
+    background:#f4f4f4; color:#3a3a3a;
+    padding:4px 10px 4px 8px; border-radius:14px;
+    font-size:12px; font-weight:500;
+    cursor:default; position:relative;
+  }
+  .asof-chip svg { width:13px; height:13px; opacity:.7; }
+  body.readonly-mode .readonly-pill,
+  body.readonly-mode .asof-chip { display:inline-flex; }
+  body.readonly-mode .saved { display:none; }
+
+  /* Read-only info banner (below the subbar) */
   .readonly-banner {
     position:absolute; top:0; left:0; right:0; z-index:90;
     background:#1a1a1a; color:#fff;
@@ -195,9 +215,8 @@
   }
   .readonly-banner.show { transform:translateY(0); }
   .readonly-banner .rb-eye { width:18px; height:18px; flex-shrink:0; color:#ffb37a; }
-  .readonly-banner .rb-text { flex:1; }
-  .readonly-banner .rb-title { font-weight:600; }
-  .readonly-banner .rb-sub { color:#bdbdbd; font-size:12px; margin-top:2px; }
+  .readonly-banner .rb-text { flex:1; font-size:12px; }
+  .readonly-banner .rb-text strong { color:#fff; font-weight:600; }
   .readonly-banner button {
     background:transparent; color:#fff; border:1px solid #4a4a4a;
     padding:6px 12px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500;
@@ -209,15 +228,28 @@
   }
   .readonly-banner button.primary:hover { filter:brightness(1.05); }
 
+  /* Custom dark tooltip (used for chips + disabled icons) */
+  .ro-tooltip {
+    position:fixed; z-index:300;
+    background:#2a2a2a; color:#fff;
+    padding:8px 12px; border-radius:6px;
+    font-size:12px; line-height:1.4;
+    max-width:280px;
+    box-shadow:0 4px 14px rgba(0,0,0,.25);
+    pointer-events:none;
+    animation:panelIn .12s ease-out;
+  }
+
   .canvas-lock-overlay {
     position:absolute; inset:0; z-index:85; pointer-events:auto;
     background:rgba(0,0,0,0.04);
   }
-  body.readonly-mode .nav, body.readonly-mode .toolbar,
-  body.readonly-mode .canvas { pointer-events:none; }
-  body.readonly-mode .history-drawer { pointer-events:auto; }
+  body.readonly-mode .canvas { pointer-events:none; filter:saturate(0.85); }
+  body.readonly-mode .subbar .icon-btn { opacity:0.4; cursor:not-allowed; pointer-events:none; }
+  body.readonly-mode .subbar .icon-btn.ro-enabled { opacity:1; cursor:pointer; pointer-events:auto; }
+  body.readonly-mode .subbar .ro-disabled-wrap { pointer-events:auto; }
+  body.readonly-mode .history-drawer,
   body.readonly-mode .readonly-banner { pointer-events:auto; }
-  body.readonly-mode .canvas { filter:saturate(0.85); }
 
   .restore-toast {
     position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
@@ -383,6 +415,11 @@
   </div>
   <div class="subbar">
     <div class="graph-name">Graph name <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+    <span class="readonly-pill" id="readonlyPill">Read only</span>
+    <span class="asof-chip" id="asofChip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="asofChipText">As of —</span>
+    </span>
     <div class="subbar-right">
       <span class="saved" id="savedLabel" title="See version history">Edited 2 mins ago</span>
       <div class="avatar-group" id="avatarGroup">
@@ -1177,6 +1214,22 @@ function enterReadOnlyMode(item) {
   viewingVersion = item;
   document.body.classList.add('readonly-mode');
 
+  // Populate subbar chips
+  const groupLabel = currentGroupLabelFor(item);
+  const asofText = formatAsOf(groupLabel, item.time);
+  document.getElementById('asofChipText').textContent = `As of ${asofText}`;
+  const pill = document.getElementById('readonlyPill');
+  const chip = document.getElementById('asofChip');
+  const chipTip = `This graph is a read-only snapshot from ${asofText}. The side panel shows live data. Duplicate this graph to make changes.`;
+  attachRoTooltip(pill, chipTip);
+  attachRoTooltip(chip, chipTip);
+
+  // Tooltips on disabled subbar icon-btns
+  document.querySelectorAll('.subbar .icon-btn').forEach(btn => {
+    if (btn.classList.contains('ro-enabled')) return;
+    attachRoTooltip(btn, 'Not available in read-only mode. Duplicate this graph to make changes.');
+  });
+
   // Canvas overlay to absorb pointer events
   if (!canvasLockOverlay) {
     canvasLockOverlay = document.createElement('div');
@@ -1184,19 +1237,15 @@ function enterReadOnlyMode(item) {
     main.appendChild(canvasLockOverlay);
   }
 
-  // Top banner
+  // Slim info banner below the subbar (lives inside .main, which sits below subbar)
   if (!readonlyBanner) {
     readonlyBanner = document.createElement('div');
     readonlyBanner.className = 'readonly-banner';
     main.appendChild(readonlyBanner);
   }
-  const groupLabel = currentGroupLabelFor(item);
   readonlyBanner.innerHTML = `
     <svg class="rb-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-    <div class="rb-text">
-      <div class="rb-title">You're viewing a historical version &nbsp;·&nbsp; Read only</div>
-      <div class="rb-sub">${groupLabel} · ${item.time} — ${escapeHtml(item.desc)}</div>
-    </div>
+    <div class="rb-text">Viewing <strong>${escapeHtml(item.desc)}</strong> from ${escapeHtml(asofText)}</div>
     <button id="rbRestoreBtn" class="primary">Restore this version</button>
     <button id="rbExitBtn">Back to current version</button>
   `;
@@ -1207,9 +1256,47 @@ function enterReadOnlyMode(item) {
   if (historyDrawer) renderHistoryBody(); // re-render to highlight viewing item
 }
 
+function formatAsOf(groupLabel, time) {
+  // groupLabel examples: 'Today', 'Yesterday', 'May 17th, 7:50 AM'
+  const today = new Date(2026, 4, 20); // May 20, 2026 (mock current date)
+  if (groupLabel === 'Today') return `May 20, 2026 ${time} UTC`;
+  if (groupLabel === 'Yesterday') return `May 19, 2026 ${time} UTC`;
+  // Extract month + day from group label like 'May 17th, 7:50 AM'
+  const m = groupLabel.match(/^([A-Za-z]+)\s+(\d+)/);
+  if (m) return `${m[1]} ${m[2]}, 2026 ${time} UTC`;
+  return `${groupLabel} ${time} UTC`;
+}
+
+// Tooltip helpers
+let activeRoTooltip = null;
+function attachRoTooltip(el, text) {
+  if (!el || el.__roTipBound) return;
+  el.__roTipBound = true;
+  el.__roTipText = text;
+  const show = () => {
+    if (!document.body.classList.contains('readonly-mode')) return;
+    hideRoTooltip();
+    const tip = document.createElement('div');
+    tip.className = 'ro-tooltip';
+    tip.textContent = el.__roTipText;
+    document.body.appendChild(tip);
+    const r = el.getBoundingClientRect();
+    const tr = tip.getBoundingClientRect();
+    tip.style.top = (r.bottom + 8) + 'px';
+    tip.style.left = Math.max(8, Math.min(window.innerWidth - tr.width - 8, r.left + r.width/2 - tr.width/2)) + 'px';
+    activeRoTooltip = tip;
+  };
+  el.addEventListener('mouseenter', show);
+  el.addEventListener('mouseleave', hideRoTooltip);
+}
+function hideRoTooltip() {
+  if (activeRoTooltip) { activeRoTooltip.remove(); activeRoTooltip = null; }
+}
+
 function exitReadOnlyMode() {
   viewingVersion = null;
   document.body.classList.remove('readonly-mode');
+  hideRoTooltip();
   if (readonlyBanner) {
     readonlyBanner.classList.remove('show');
     const b = readonlyBanner; readonlyBanner = null;
