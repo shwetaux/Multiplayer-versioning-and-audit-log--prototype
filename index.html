@@ -33,7 +33,8 @@
   .graph-name:hover { background:#f5f5f5; }
   .graph-name svg { width:12px; height:12px; opacity:.6; }
   .subbar-right { margin-left:auto; display:flex; align-items:center; gap:6px; }
-  .saved { font-size:13px; color:#8a8a8a; margin-right:8px; }
+  .saved { font-size:13px; color:#8a8a8a; margin-right:8px; cursor:pointer; padding:4px 6px; border-radius:6px; transition:background .12s, color .12s; }
+  .saved:hover { background:#f5f5f5; color:#1a1a1a; }
   .subbar-divider { width:1px; height:20px; background:var(--border); margin:0 4px; }
 
   .avatar-group { display:flex; align-items:center; background:#f4f4f4; border-radius:18px; padding:3px 6px 3px 4px; gap:4px; cursor:pointer; }
@@ -116,6 +117,46 @@
   .cursor-label { margin-top:4px; margin-left:12px; padding:3px 8px; border-radius:6px; font-size:11px; font-weight:500; color:#fff; white-space:nowrap; display:inline-block; }
 
   .spotlight-panel { position:absolute; width:300px; background:#fff; border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,.12); z-index:50; overflow:hidden; transform-origin:top left; animation:panelIn .18s ease-out; }
+
+  /* Version history drawer */
+  .history-drawer {
+    position:absolute; top:0; right:0; bottom:0; width:340px;
+    background:#fff; border-left:1px solid var(--border);
+    box-shadow:-8px 0 24px rgba(0,0,0,.06);
+    z-index:60;
+    transform:translateX(100%);
+    transition:transform .25s cubic-bezier(0.22,1,0.36,1);
+    display:flex; flex-direction:column;
+  }
+  .history-drawer.open { transform:translateX(0); }
+  .history-header { padding:14px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  .history-title { font-size:15px; font-weight:600; }
+  .history-close { background:transparent; border:none; cursor:pointer; color:var(--muted); padding:4px; border-radius:4px; display:flex; }
+  .history-close:hover { background:#f2f2f2; color:#1a1a1a; }
+  .history-close svg { width:18px; height:18px; }
+  .history-body { flex:1; overflow-y:auto; }
+  .history-group { padding:8px 0; }
+  .history-group-title { padding:10px 16px 6px; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .history-item {
+    padding:10px 16px; display:flex; gap:10px; cursor:pointer;
+    border-left:3px solid transparent;
+    transition:background .1s, border-color .1s;
+  }
+  .history-item:hover { background:#f7f7f7; }
+  .history-item.current { background:#fff5f0; border-left-color:var(--accent); }
+  .history-item .item-time { font-size:13px; font-weight:500; color:#1a1a1a; }
+  .history-item .item-current-badge { display:inline-block; margin-left:6px; font-size:10px; background:var(--accent); color:#fff; padding:1px 6px; border-radius:8px; font-weight:600; }
+  .history-item .item-desc { font-size:12px; color:var(--muted); margin-top:2px; }
+  .history-item .item-editors { display:flex; align-items:center; gap:6px; margin-top:6px; }
+  .history-item .item-editors .avatar { width:20px; height:20px; border:1.5px solid #fff; margin-left:-4px; font-size:9px; }
+  .history-item .item-editors .avatar:first-child { margin-left:0; }
+  .history-item .item-editor-name { font-size:11px; color:#5a5a5a; }
+  .history-item .item-content { flex:1; }
+  .history-item .item-actions { opacity:0; transition:opacity .15s; }
+  .history-item:hover .item-actions { opacity:1; }
+  .history-restore { background:transparent; border:1px solid var(--border); color:#1a1a1a; font-size:11px; padding:4px 10px; border-radius:6px; cursor:pointer; }
+  .history-restore:hover { background:#f2f2f2; }
+  .history-footer { padding:10px 16px; border-top:1px solid var(--border); font-size:11px; color:var(--muted); }
   @keyframes panelIn { from { opacity:0; transform:scale(0.95) translateY(-4px); } to { opacity:1; transform:scale(1) translateY(0); } }
   .panel-header { padding:12px 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
   .panel-title { font-size:13px; font-weight:600; }
@@ -194,7 +235,7 @@
   <div class="subbar">
     <div class="graph-name">Graph name <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
     <div class="subbar-right">
-      <span class="saved">Edited 2 mins ago</span>
+      <span class="saved" id="savedLabel" title="See version history">Edited 2 mins ago</span>
       <div class="avatar-group" id="avatarGroup">
         <div class="avatar-stack" id="avatarStack"></div>
         <button class="avatar-chevron" id="avatarChevron" title="Open live session">
@@ -592,6 +633,104 @@ function selectNodeByUser(nodeId, user) {
 function clearAllSelections() {
   document.querySelectorAll('.node').forEach(n => { n.classList.remove('selected-by-user'); n.style.removeProperty('--user-color'); });
 }
+
+// ============== VERSION HISTORY ==============
+const versionHistory = [
+  { group:'Today', items: [
+    { time:'2 minutes ago',  desc:'Auto-saved',                  editors:['you','tom'],   current:true },
+    { time:'15 minutes ago', desc:'Renamed cluster to Helix Mixer', editors:['tom'] },
+    { time:'47 minutes ago', desc:'Added 3 outbound transfers',  editors:['adam'] },
+    { time:'1 hour ago',     desc:'Auto-saved',                  editors:['you'] },
+    { time:'3 hours ago',    desc:'Connected Coinbase.com source', editors:['you','sara'] },
+  ]},
+  { group:'Yesterday', items: [
+    { time:'4:32 PM', desc:'Added Helix Mixer destination node', editors:['sara'] },
+    { time:'2:14 PM', desc:'Auto-saved',                         editors:['mike'] },
+    { time:'11:08 AM', desc:'Initial graph layout',              editors:['you'] },
+  ]},
+  { group:'May 18', items: [
+    { time:'6:42 PM', desc:'Restored from May 17 version',       editors:['adam'] },
+    { time:'3:20 PM', desc:'Auto-saved',                         editors:['kira'] },
+    { time:'10:05 AM', desc:'Created graph',                     editors:['you'] },
+  ]},
+];
+
+let historyDrawer = null;
+function openHistory() {
+  if (historyDrawer) return;
+  historyDrawer = document.createElement('div');
+  historyDrawer.className = 'history-drawer';
+  historyDrawer.innerHTML = `
+    <div class="history-header">
+      <div class="history-title">Version history</div>
+      <button class="history-close" id="historyClose" title="Close">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="history-body" id="historyBody"></div>
+    <div class="history-footer">Only the last 30 days are shown</div>
+  `;
+  main.appendChild(historyDrawer);
+
+  const body = historyDrawer.querySelector('#historyBody');
+  versionHistory.forEach(grp => {
+    const g = document.createElement('div');
+    g.className = 'history-group';
+    g.innerHTML = `<div class="history-group-title">${grp.group}</div>`;
+    grp.items.forEach(it => {
+      const editorObjs = it.editors.map(id => id === 'you' ? currentUser : users.find(u => u.id === id)).filter(Boolean);
+      const item = document.createElement('div');
+      item.className = 'history-item' + (it.current ? ' current' : '');
+      item.innerHTML = `
+        <div class="item-content">
+          <div class="item-time">${it.time}${it.current ? '<span class="item-current-badge">Current</span>' : ''}</div>
+          <div class="item-desc">${it.desc}</div>
+          <div class="item-editors">
+            <div style="display:flex">${editorObjs.map(u => `<div class="avatar" data-uid="${u.id}"></div>`).join('')}</div>
+            <span class="item-editor-name">${editorObjs.map(u => u.id === 'you' ? 'You' : u.name).join(', ')}</span>
+          </div>
+        </div>
+        ${!it.current ? '<div class="item-actions"><button class="history-restore">Restore</button></div>' : ''}
+      `;
+      item.querySelectorAll('.avatar[data-uid]').forEach(el => {
+        const u = el.dataset.uid === 'you' ? currentUser : users.find(x => x.id === el.dataset.uid);
+        if (u) styleAvatar(el, u);
+      });
+      const restoreBtn = item.querySelector('.history-restore');
+      if (restoreBtn) restoreBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        restoreBtn.textContent = 'Restored ✓';
+        restoreBtn.style.background = '#fff5f0';
+        restoreBtn.style.borderColor = 'var(--accent)';
+        restoreBtn.style.color = 'var(--accent)';
+        setTimeout(() => closeHistory(), 700);
+      });
+      g.appendChild(item);
+    });
+    body.appendChild(g);
+  });
+
+  historyDrawer.querySelector('#historyClose').addEventListener('click', closeHistory);
+  // animate in
+  requestAnimationFrame(() => historyDrawer.classList.add('open'));
+}
+function closeHistory() {
+  if (!historyDrawer) return;
+  historyDrawer.classList.remove('open');
+  const d = historyDrawer;
+  historyDrawer = null;
+  setTimeout(() => d.remove(), 250);
+}
+document.getElementById('savedLabel').addEventListener('click', (e) => {
+  e.stopPropagation();
+  historyDrawer ? closeHistory() : openHistory();
+});
+document.addEventListener('mousedown', (e) => {
+  if (!historyDrawer) return;
+  if (historyDrawer.contains(e.target)) return;
+  if (document.getElementById('savedLabel').contains(e.target)) return;
+  closeHistory();
+});
 
 // ============== SCENE CONTROLLER ==============
 const sceneText = document.getElementById('sceneText');
