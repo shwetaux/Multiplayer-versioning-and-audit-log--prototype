@@ -1166,7 +1166,7 @@ const filterIcons = {
 };
 
 function filterLabel() {
-  return { all:'All', yours:'Only yours', automation:'Only Automations', llm:'Only LLM' }[historyFilter] || 'All';
+  return { all:'All', yours:'Only yours', automation:'Only Automations', llm:'Only LLM', named:'Only named versions' }[historyFilter] || 'All';
 }
 
 function getFilteredHistory() {
@@ -1179,6 +1179,7 @@ function getFilteredHistory() {
       if (historyFilter === 'yours') return it.actorId === 'you';
       if (historyFilter === 'automation') return it.actor === 'automation';
       if (historyFilter === 'llm') return it.actor === 'llm';
+      if (historyFilter === 'named') return !!it.named;
       return true;
     })
   })).filter(g => g.items.length > 0);
@@ -1756,6 +1757,11 @@ function openFilterMenu() {
     <div class="filter-option ${historyFilter==='llm'?'selected':''}" data-f="llm">
       <div class="opt-icon">${filterIcons.llm}</div>
       <div class="opt-label">Only LLM</div>
+      <div class="opt-check">${filterIcons.check}</div>
+    </div>
+    <div class="filter-option ${historyFilter==='named'?'selected':''}" data-f="named">
+      <div class="opt-icon"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2l2.39 4.84L20 7.6l-4 3.89.94 5.51L12 14.77l-4.94 2.23L8 11.49 4 7.6l5.61-.76z"/></svg></div>
+      <div class="opt-label">Only named versions</div>
       <div class="opt-check">${filterIcons.check}</div>
     </div>
     <div class="filter-menu-divider"></div>
