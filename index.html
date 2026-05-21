@@ -62,6 +62,7 @@
 
   .avatar-group.pulse { box-shadow:0 0 0 0 rgba(255,91,46,.6); animation:pulse 1.4s infinite; }
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,91,46,.6);} 70%{box-shadow:0 0 0 12px rgba(255,91,46,0);} 100%{box-shadow:0 0 0 0 rgba(255,91,46,0);} }
+  .saved.pulse { border-radius:20px; box-shadow:0 0 0 0 rgba(255,91,46,.6); animation:pulse 1.4s infinite; }
 
   /* Top "you" section in panel */
   .panel-you { display:flex; align-items:center; gap:12px; padding:14px; border-bottom:1px solid var(--border); }
@@ -738,7 +739,7 @@
     </div>
     <div class="tooltip" id="tooltip"></div>
     <div class="scene-controller" id="sceneCtl">
-      <span class="scene-counter" id="sceneCounter">1 / 8</span>
+      <span class="scene-counter" id="sceneCounter">1 / 13</span>
       <span class="scene-text" id="sceneText">You're alone on this graph. Click Next to see what happens when teammates join.</span>
       <button class="secondary" id="prevBtn">Back</button>
       <button id="nextBtn">Next →</button>
@@ -2127,6 +2128,67 @@ const scenes = [
       moveCursorTo('tom', 1050, 980);
       centerOnCanvasPoint(1200, 950);
     }
+  },
+  {
+    text: "Every change is tracked. Click the clock badge in the top bar to open the Activity log →",
+    enter() {
+      if (chatDrawer) closeChatDrawer();
+      if (historyDrawer) closeHistory();
+      closePanel();
+      stopSpotlight();
+      if (meSpotlighting) toggleMeSpotlight();
+      document.getElementById('savedLabel').classList.add('pulse');
+    },
+    exit() { document.getElementById('savedLabel').classList.remove('pulse'); }
+  },
+  {
+    text: "The Activity log shows every edit, automation, and AI action — grouped by day, with a timeline of who did what. ★ V1/V2/V3 mark named versions saved by people.",
+    enter() {
+      if (chatDrawer) closeChatDrawer();
+      if (!historyDrawer) openHistory();
+    }
+  },
+  {
+    text: "Click any historical entry to enter read-only mode and view that version. Use 'Restore' to bring it back.",
+    enter() {
+      if (chatDrawer) closeChatDrawer();
+      if (!historyDrawer) openHistory();
+      const item = versionHistory.flatMap(g => g.items).find(i => i.named === 'Before adding cluster A');
+      if (item) setTimeout(() => enterReadOnlyMode(item), 200);
+    },
+    exit() { if (viewingVersion) exitReadOnlyMode(); }
+  },
+  {
+    text: "Click the sparkle icon on a human edit to open 'Summary of changes' — what was changed, why it matters, and suggested next steps. Notice the Deterministic chip.",
+    enter() {
+      if (chatDrawer) closeChatDrawer();
+      if (viewingVersion) exitReadOnlyMode();
+      if (!historyDrawer) openHistory();
+      const item = versionHistory.flatMap(g => g.items).find(i => i.actor === 'user' && i.desc.includes('Suspect cluster A'));
+      if (item) setTimeout(() => openAiSummaryPanel(item), 200);
+    },
+    exit() { if (historyDrawer) restoreHistoryHeader(); }
+  },
+  {
+    text: "For AI actions, the same icon opens 'Agent reasoning' instead — a structured Action → Result → Claim → Source chain you can inspect before trusting the output. Notice the AI inference chip.",
+    enter() {
+      if (chatDrawer) closeChatDrawer();
+      if (viewingVersion) exitReadOnlyMode();
+      if (!historyDrawer) openHistory();
+      const item = versionHistory.flatMap(g => g.items).find(i => i.actor === 'llm' && i.desc.includes('Helix'));
+      if (item) setTimeout(() => openAiSummaryPanel(item), 200);
+    },
+    exit() { if (historyDrawer) restoreHistoryHeader(); }
+  },
+  {
+    text: "Some AI entries link back to the chat that produced them. Click 'View in chat' on an LLM item to open the agentic conversation on the left — review the original prompt, results, and reply inline.",
+    enter() {
+      if (viewingVersion) exitReadOnlyMode();
+      if (!historyDrawer) openHistory();
+      const item = versionHistory.flatMap(g => g.items).find(i => i.actor === 'llm' && i.chat && i.desc.includes('Helix'));
+      if (item) setTimeout(() => openChatDrawer(item), 250);
+    },
+    exit() { if (chatDrawer) closeChatDrawer(); }
   },
 ];
 
