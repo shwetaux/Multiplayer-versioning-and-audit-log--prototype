@@ -64,6 +64,7 @@
   @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(255,91,46,.6);} 70%{box-shadow:0 0 0 12px rgba(255,91,46,0);} 100%{box-shadow:0 0 0 0 rgba(255,91,46,0);} }
   .saved.pulse { border-radius:20px; box-shadow:0 0 0 0 rgba(255,91,46,.6); animation:pulse 1.4s infinite; }
   .graph-name.pulse { box-shadow:0 0 0 0 rgba(255,91,46,.6); animation:pulse 1.4s infinite; }
+  .ts-play-btn.pulse { box-shadow:0 0 0 0 rgba(255,91,46,.6); animation:pulse 1.4s infinite; }
 
   /* Top "you" section in panel */
   .panel-you { display:flex; align-items:center; gap:12px; padding:14px; border-bottom:1px solid var(--border); }
@@ -83,7 +84,8 @@
   .search-bar input { flex:1; border:none; outline:none; font-size:13px; background:transparent; }
   .search-bar input::placeholder { color:var(--muted); }
 
-  .canvas-viewport { position:absolute; inset:0; overflow:hidden; }
+  .canvas-viewport { position:absolute; inset:0; overflow:hidden; transition:right .35s cubic-bezier(0.22,1,0.36,1); }
+  body.has-history-drawer .canvas-viewport { right:420px; }
   .canvas {
     position:absolute; width:3000px; height:2000px; left:50%; top:50%;
     transform:translate(-50%,-50%);
@@ -735,6 +737,11 @@
   .history-item:hover { background:rgba(0,0,0,.04); }
   .history-item.viewing { background:rgba(59,130,246,.10); }
   .history-item.viewing::before { display:none; }
+  .history-item.ts-active {
+    background:rgba(59,130,246,.14);
+    box-shadow:inset 3px 0 0 #3b82f6;
+    transition:background .2s ease, box-shadow .2s ease;
+  }
   /* Hide descriptive clutter — keep handlers + data intact */
   .history-item .kind-pill:not(.named-pill),
   .history-item .item-actor-name { display:none; }
@@ -799,6 +806,151 @@
   .group-current-badge:hover { background:#dfe9ff; color:#1d4fd1; }
   /* Pull the timeline line behind the cards, centered through chevrons */
   .history-groups { background-position:37px 24px; }
+
+  /* ===== Time-travel hidden state (nodes/edges that don't exist yet) ===== */
+  .node { transition:opacity .35s ease, transform .35s ease, box-shadow .25s ease; }
+  #edges line { transition:opacity .35s ease, stroke .25s ease; }
+  .edge-label { transition:opacity .35s ease; }
+  .node.tt-hidden { opacity:0; transform:scale(0.4); pointer-events:none; }
+  #edges line.tt-hidden { opacity:0; }
+  .edge-label.tt-hidden { opacity:0; }
+
+  /* ===== Diff coloring (read-only mode) ===== */
+  .node.diff-added { box-shadow:0 0 0 3px #22c55e, 0 0 16px rgba(34,197,94,.45); animation:diffPulse 1.2s ease-out; }
+  @keyframes diffPulse { 0% { transform:scale(0.6); } 60% { transform:scale(1.08); } 100% { transform:scale(1); } }
+  .node.diff-removed { opacity:.45; box-shadow:0 0 0 2px #ef4444; border:1.5px dashed #ef4444 !important; }
+  .node.diff-modified { box-shadow:0 0 0 3px #f59e0b, 0 0 14px rgba(245,158,11,.4); }
+  .node.diff-added::after,
+  .node.diff-modified::after,
+  .node.diff-removed::after {
+    content:''; position:absolute; top:-4px; right:-4px;
+    width:14px; height:14px; border-radius:50%; border:2px solid #fff;
+    background:#22c55e;
+  }
+  .node.diff-modified::after { background:#f59e0b; }
+  .node.diff-removed::after { background:#ef4444; }
+  #edges line.diff-added { stroke:#22c55e !important; stroke-width:2.2 !important; }
+  #edges line.diff-modified { stroke:#f59e0b !important; stroke-width:2.2 !important; }
+  #edges line.diff-removed { stroke:#ef4444 !important; stroke-dasharray:6 4; opacity:.7; }
+  .edge-label.diff-removed { opacity:.5; text-decoration:line-through; }
+  /* Ghost node — shown only while viewing a version where it was removed */
+  .node.ghost-node {
+    background:transparent !important;
+    color:#ef4444; opacity:.55;
+    box-shadow:0 0 0 2px #ef4444 inset;
+    border:1.5px dashed #ef4444;
+    animation:none;
+  }
+  .node.ghost-node .node-icon { opacity:.5; }
+  .node.ghost-node .node-badge { display:none; }
+  .ghost-label {
+    position:absolute; transform:translate(-50%, 0);
+    font-size:10px; color:#ef4444; opacity:.7;
+    text-decoration:line-through; white-space:nowrap;
+    pointer-events:none;
+  }
+
+  /* Diff legend (inline inside the scrubber) */
+  .diff-legend {
+    display:flex; gap:12px; align-items:center;
+    font-size:11px; color:#4a4a4a;
+  }
+  .diff-legend span { display:inline-flex; align-items:center; white-space:nowrap; }
+  .diff-legend .dl-swatch { width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:5px; vertical-align:middle; }
+  .diff-legend .dl-added { background:#22c55e; }
+  .diff-legend .dl-modified { background:#f59e0b; }
+  .diff-legend .dl-removed { background:#ef4444; }
+
+  /* ===== Time-scrubber ===== */
+  .time-scrubber {
+    position:absolute; bottom:90px; left:50%; transform:translateX(-50%);
+    width:min(640px, 80%);
+    background:#fff; border:1px solid #e4e4e4; border-radius:14px;
+    box-shadow:0 8px 28px rgba(0,0,0,.12);
+    padding:14px 22px 12px;
+    z-index:88;
+    display:none;
+  }
+  .time-scrubber.open { display:block; }
+  .ts-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:14px;
+  }
+  .ts-header-left { display:flex; align-items:center; gap:10px; }
+  .ts-title { font-size:12px; font-weight:600; color:#1a1a1a; }
+  .ts-play-btn {
+    background:#3b82f6; color:#fff; border:none;
+    width:28px; height:28px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:background .12s, transform .12s;
+  }
+  .ts-play-btn:hover { background:#2563eb; transform:scale(1.05); }
+  .ts-play-btn.playing { background:#ef4444; }
+  .ts-play-btn.playing:hover { background:#dc2626; }
+  .ts-play-btn svg { width:14px; height:14px; }
+  .ts-now-btn {
+    background:transparent; border:1px solid #d4d4d4; border-radius:6px;
+    padding:3px 10px; font-size:11px; color:#4a4a4a; cursor:pointer;
+    font-weight:500;
+  }
+  .ts-now-btn:hover { background:#f4f4f4; border-color:#b4b4b4; }
+  .ts-close {
+    background:transparent; border:none; cursor:pointer;
+    color:#6a6a6a; padding:4px; border-radius:4px; display:flex;
+  }
+  .ts-close:hover { background:#eee; color:#1a1a1a; }
+  .ts-close svg { width:14px; height:14px; }
+  .ts-header-right { display:flex; gap:8px; align-items:center; }
+
+  .ts-track-wrap { position:relative; height:32px; }
+  .ts-track {
+    position:absolute; left:0; right:0; top:14px; height:4px;
+    background:#e8e8e8; border-radius:2px;
+  }
+  .ts-track-fill {
+    position:absolute; left:0; top:14px; height:4px;
+    background:#3b82f6; border-radius:2px;
+  }
+  .ts-tick {
+    position:absolute; top:11px; width:2px; height:10px;
+    background:#c4c4c4; transform:translateX(-1px);
+  }
+  .ts-tick.named {
+    width:8px; height:8px; top:12px; border-radius:50%;
+    background:#16a34a; transform:translateX(-4px);
+  }
+  .ts-thumb {
+    position:absolute; top:8px; width:16px; height:16px;
+    background:#fff; border:2px solid #3b82f6; border-radius:50%;
+    cursor:grab; transform:translateX(-8px); transition:box-shadow .15s;
+    box-shadow:0 1px 3px rgba(0,0,0,.15);
+  }
+  .ts-thumb:hover, .ts-thumb.dragging { box-shadow:0 0 0 6px rgba(59,130,246,.15); }
+  .ts-thumb.dragging { cursor:grabbing; }
+  .ts-tooltip {
+    position:absolute; top:34px; left:0;
+    background:#1a1a1a; color:#fff; padding:6px 10px;
+    border-radius:6px; font-size:11px; white-space:nowrap;
+    transform:translateX(-50%); pointer-events:none;
+    box-shadow:0 4px 12px rgba(0,0,0,.2);
+    opacity:0; visibility:hidden; transition:opacity .15s ease, visibility .15s ease;
+  }
+  .ts-track-wrap:hover .ts-tooltip,
+  .ts-thumb:hover .ts-tooltip,
+  .ts-thumb.dragging .ts-tooltip { opacity:1; visibility:visible; }
+  .ts-tooltip::after {
+    content:''; position:absolute; top:-4px; left:50%;
+    margin-left:-4px; width:0; height:0;
+    border-left:4px solid transparent; border-right:4px solid transparent;
+    border-bottom:4px solid #1a1a1a;
+  }
+  .ts-tooltip .tt-time { font-weight:600; }
+  .ts-tooltip .tt-actor { opacity:.7; margin-left:4px; }
+  .ts-tooltip .tt-desc { display:block; opacity:.8; font-size:10px; margin-top:2px; max-width:240px; overflow:hidden; text-overflow:ellipsis; }
+  .ts-ends {
+    display:flex; justify-content:space-between;
+    font-size:10px; color:#9a9a9a; margin-top:2px;
+  }
 </style>
 </head>
 <body>
@@ -936,7 +1088,7 @@ function getNode(id) { return nodes.find(n => n.id === id); }
       </marker>
     </defs>
   `;
-  edges.forEach(e => {
+  edges.forEach((e, i) => {
     const a = getNode(e.from), b = getNode(e.to);
     const dx = b.x - a.x, dy = b.y - a.y;
     const len = Math.hypot(dx, dy);
@@ -945,14 +1097,15 @@ function getNode(id) { return nodes.find(n => n.id === id); }
     const y1 = a.y + uy * (r + 2);
     const x2 = b.x - ux * (r + 8);
     const y2 = b.y - uy * (r + 8);
-    svgInner += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#a8a8a8" stroke-width="1.2" marker-end="url(#arrow)"/>`;
+    svgInner += `<line data-id="e${i}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#a8a8a8" stroke-width="1.2" marker-end="url(#arrow)"/>`;
   });
   edgesSvg.innerHTML = svgInner;
 
-  edges.forEach(e => {
+  edges.forEach((e, i) => {
     const a = getNode(e.from), b = getNode(e.to);
     const lbl = document.createElement('div');
     lbl.className = 'edge-label';
+    lbl.dataset.id = `e${i}`;
     lbl.style.left = ((a.x + b.x)/2) + 'px';
     lbl.style.top = ((a.y + b.y)/2 - 12) + 'px';
     lbl.textContent = e.label;
@@ -1390,15 +1543,20 @@ function renderHistoryBody() {
     grp.items.forEach(it => {
       const item = document.createElement('div');
       item.className = 'history-item';
+      item.dataset.vkey = `${it.time}||${it.desc}`;
       if (viewingVersion && viewingVersion.time === it.time && viewingVersion.desc === it.desc) {
         item.classList.add('viewing');
       }
-      if (!it.current) {
-        item.addEventListener('click', (e) => {
-          if (e.target.closest('.item-menu-btn') || e.target.closest('.item-ai-btn') || e.target.closest('.item-chat-link')) return;
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.item-menu-btn') || e.target.closest('.item-ai-btn') || e.target.closest('.item-chat-link')) return;
+        if (it.current) {
+          if (!scrubberEl) openScrubber();
+          syncScrubberThumb();
+          highlightHistoryItemFor({ ...it, group: grp.group });
+        } else {
           enterReadOnlyMode(it);
-        });
-      }
+        }
+      });
 
       // Avatar
       const avatarWrap = document.createElement('div');
@@ -1465,7 +1623,7 @@ function renderHistoryBody() {
       const aiBtn = document.createElement('button');
       aiBtn.className = 'item-ai-btn';
       aiBtn.title = 'AI summary of changes';
-      aiBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="14" y2="6"/><line x1="4" y1="12" x2="11" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/><path d="M18 14l1.2 2.4L21.6 17.6 19.2 18.8 18 21.2 16.8 18.8 14.4 17.6 16.8 16.4z" fill="currentColor" stroke="none"/></svg>`;
+      aiBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5 L6.2 6 L8.7 7.2 L6.2 8.4 L5 10.9 L3.8 8.4 L1.3 7.2 L3.8 6 Z" fill="currentColor" stroke="none"/><line x1="11" y1="7" x2="21" y2="7"/><line x1="4" y1="14" x2="21" y2="14"/><line x1="4" y1="19" x2="17" y2="19"/></svg>`;
       aiBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         openAiSummaryPanel(it);
@@ -1966,6 +2124,11 @@ function openHistory() {
   historyDrawer.querySelector('#historyClose').addEventListener('click', closeHistory);
   historyDrawer.querySelector('#historyFilterBtn').addEventListener('click', (e) => { e.stopPropagation(); openFilterMenu(); });
   requestAnimationFrame(() => historyDrawer.classList.add('open'));
+  if (!scrubberEl) openScrubber();
+  syncScrubberThumb();
+  // Shrink the canvas viewport so the graph re-centers in the visible area
+  document.body.classList.add('has-history-drawer');
+  requestAnimationFrame(updateAllCursorScreenPositions);
 }
 function closeHistory() {
   closeFilterMenu();
@@ -1974,6 +2137,10 @@ function closeHistory() {
   const d = historyDrawer;
   historyDrawer = null;
   setTimeout(() => d.remove(), 250);
+  if (scrubberEl && !document.body.classList.contains('readonly-mode')) closeScrubber();
+  // Restore full viewport
+  document.body.classList.remove('has-history-drawer');
+  requestAnimationFrame(updateAllCursorScreenPositions);
 }
 
 // =========== LEFT-SIDE AGENTIC CHAT DRAWER ===========
@@ -2127,6 +2294,10 @@ function enterReadOnlyMode(item) {
 
   if (historyDrawer) renderHistoryBody(); // re-render to highlight viewing item
   updateGraphNameLabel();
+  applyDiffForItem(item);
+  if (!scrubberEl) openScrubber();
+  syncScrubberThumb();
+  highlightHistoryItemFor(item);
 }
 
 function formatAsOf(groupLabel, time) {
@@ -2178,6 +2349,342 @@ function exitReadOnlyMode() {
   if (canvasLockOverlay) { canvasLockOverlay.remove(); canvasLockOverlay = null; }
   if (historyDrawer) renderHistoryBody();
   updateGraphNameLabel();
+  clearDiff();
+  // Scrubber stays open until the user closes the activity log
+  if (scrubberEl) syncScrubberThumb();
+  // Highlight the current version in the activity log
+  if (allVersions.length === 0) buildAllVersions();
+  const cur = allVersions[allVersions.length - 1];
+  if (cur) highlightHistoryItemFor(cur);
+}
+
+// ===== Diff coloring (light) =====
+// Designed so the chronological play-through shows visible activity at every step:
+// the graph starts as a seed (n0 + n1 + e0) and progressively grows to all 8 nodes
+// and 9 edges, with modifications, regroupings and re-labels in between.
+const versionDeltas = {
+  // ---- May 15th (oldest) ----
+  'Initial save — investigation "Operation Sundial" created': {
+    addedNodes:['n0','n1'], addedEdges:['e0']
+  },
+  '2 clusters attributed to Bitfinex Hot Wallet':           { modifiedNodes:['n1'] },
+  'Generated executive summary of investigation':           { modifiedNodes:['n0','n1'] },
+  'Sync workflow refreshed 1,204 tx records':               { addedNodes:['n2'], addedEdges:['e1'] },
+  'Created new graph from Coinbase deposit address':        { modifiedNodes:['n0','n1','n2'] },
+
+  // ---- May 16th ----
+  'Auto-saved investigation metadata':                      { modifiedNodes:['n0'] },
+  'Grouped 8 wallets into "Exchange A — deposits"':         { addedNodes:['n3'], addedEdges:['e2'], modifiedNodes:['n1'] },
+  'Flagged 1 high-risk counterparty (OFAC match)':          { modifiedNodes:['n3'] },
+  'Sync workflow pulled 320 new transactions':              { addedNodes:['n4'], addedEdges:['e3'] },
+  'Added 12 new wallet addresses to graph':                 { addedNodes:['n5'], addedEdges:['e4'], modifiedNodes:['n3','n4'] },
+
+  // ---- May 17th ----
+  'Auto-saved canvas pan/zoom state':                       { modifiedNodes:['n0'] },
+  '4 clusters attributed to Tornado Cash':                  { modifiedNodes:['n2','n4'] },
+  'Suggested 3 likely peel-chain candidates':               { modifiedNodes:['n3','n5'], modifiedEdges:['e2','e4'] },
+  'LIFO workflow traced 0.84 BTC from victim deposit':      { modifiedEdges:['e0','e1','e2'] },
+  'Added comment on 0x4a...e21f counterparty':              { modifiedNodes:['n4'] },
+
+  // ---- Yesterday ----
+  'Auto-saved 14 graph edits':                              { modifiedNodes:['n5'] },
+  'Refreshed balances for 27 addresses':                    { modifiedNodes:['n0','n1','n2','n3'] },
+  'Peel chain workflow expanded 8 outbound hops':           { addedNodes:['n6'], addedEdges:['e5'] },
+  'Drafted narrative: "Peel chain pattern detected"':       { modifiedNodes:['n6'] },
+  'Tagged 6 counterparties as "High risk"':                 {
+    modifiedNodes:['n3','n4','n5','n6'],
+    removedGhosts:[
+      { x:1700, y:1260, label:'0xFa19...false-pos' }
+    ]
+  },
+  'Renamed "Helix Mixer" terminal node':                    { addedNodes:['n7'], addedEdges:['e6'], modifiedNodes:['n7'] },
+
+  // ---- Today ----
+  'Auto-saved layout changes':                              { modifiedNodes:['n2','n3'] },
+  'Added 4 wallets to "Suspect cluster A"':                 { addedEdges:['e7','e8'], modifiedNodes:['n4','n5','n6','n7'] },
+  '2 clusters attributed to Binance Hot Wallet 14':         { modifiedNodes:['n0','n1'] },
+  'Summarized fund flow into Helix Mixer':                  { modifiedNodes:['n7'] },
+  'LIFO traced 12 hops from Coinbase deposit':              { modifiedEdges:['e0','e1','e2','e3','e4'] },
+  'Re-parented 3 nodes under "AI Tools" page':              { modifiedNodes:['n5','n6','n7'] },
+};
+
+function clearDiff() {
+  document.querySelectorAll('.node.diff-added, .node.diff-removed, .node.diff-modified')
+    .forEach(n => n.classList.remove('diff-added','diff-removed','diff-modified'));
+  document.querySelectorAll('#edges line.diff-added, #edges line.diff-removed, #edges line.diff-modified')
+    .forEach(l => l.classList.remove('diff-added','diff-removed','diff-modified'));
+  document.querySelectorAll('.edge-label.diff-removed')
+    .forEach(l => l.classList.remove('diff-removed'));
+  // Restore visibility of anything hidden by time travel
+  document.querySelectorAll('.node.tt-hidden').forEach(n => n.classList.remove('tt-hidden'));
+  document.querySelectorAll('#edges line.tt-hidden').forEach(l => l.classList.remove('tt-hidden'));
+  document.querySelectorAll('.edge-label.tt-hidden').forEach(l => l.classList.remove('tt-hidden'));
+  // Remove ghost-node DOM elements
+  document.querySelectorAll('.ghost-node, .ghost-label').forEach(el => el.remove());
+}
+function hiddenAtItem(item) {
+  if (allVersions.length === 0) buildAllVersions();
+  const idx = allVersions.findIndex(v => v.time === item.time && v.desc === item.desc);
+  const hiddenNodes = new Set();
+  const hiddenEdges = new Set();
+  if (idx === -1) return { nodes:hiddenNodes, edges:hiddenEdges };
+  for (let i = idx + 1; i < allVersions.length; i++) {
+    const d = versionDeltas[allVersions[i].desc];
+    if (!d) continue;
+    (d.addedNodes || []).forEach(id => hiddenNodes.add(id));
+    (d.addedEdges || []).forEach(id => hiddenEdges.add(id));
+  }
+  return { nodes:hiddenNodes, edges:hiddenEdges };
+}
+function applyDiffForItem(item) {
+  clearDiff();
+  if (!item || item.current) return;
+  // Hide things that don't exist yet at this version
+  const hidden = hiddenAtItem(item);
+  hidden.nodes.forEach(id => {
+    const el = document.querySelector(`.node[data-id="${id}"]`);
+    if (el) el.classList.add('tt-hidden');
+  });
+  hidden.edges.forEach(id => {
+    const el = document.querySelector(`#edges line[data-id="${id}"]`);
+    if (el) el.classList.add('tt-hidden');
+    const lbl = document.querySelector(`.edge-label[data-id="${id}"]`);
+    if (lbl) lbl.classList.add('tt-hidden');
+  });
+  const delta = versionDeltas[item.desc];
+  if (!delta) return;
+  const tag = (sel, cls, ids) => (ids||[]).forEach(id => {
+    const el = document.querySelector(`${sel}[data-id="${id}"]`);
+    if (el) el.classList.add(cls);
+  });
+  tag('.node', 'diff-added',    delta.addedNodes);
+  tag('.node', 'diff-removed',  delta.removedNodes);
+  tag('.node', 'diff-modified', delta.modifiedNodes);
+  tag('#edges line', 'diff-added',    delta.addedEdges);
+  tag('#edges line', 'diff-removed',  delta.removedEdges);
+  tag('#edges line', 'diff-modified', delta.modifiedEdges);
+  (delta.removedEdges||[]).forEach(id => {
+    const lbl = document.querySelector(`.edge-label[data-id="${id}"]`);
+    if (lbl) lbl.classList.add('diff-removed');
+  });
+  // Render ghost nodes (representations of deleted items at this version)
+  (delta.removedGhosts || []).forEach(g => {
+    const el = document.createElement('div');
+    el.className = 'node ghost-node';
+    el.style.left = (g.x - 28) + 'px';
+    el.style.top  = (g.y - 28) + 'px';
+    const icon = document.createElement('div');
+    icon.className = 'node-icon';
+    icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>`;
+    el.appendChild(icon);
+    canvas.appendChild(el);
+    if (g.label) {
+      const lbl = document.createElement('div');
+      lbl.className = 'ghost-label';
+      lbl.style.left = g.x + 'px';
+      lbl.style.top  = (g.y + 34) + 'px';
+      lbl.textContent = g.label;
+      canvas.appendChild(lbl);
+    }
+  });
+}
+
+// ===== Time-scrubber (light) =====
+let scrubberEl = null;
+let allVersions = []; // chronological: oldest -> newest
+
+function highlightHistoryItemFor(v) {
+  if (!historyDrawer) return;
+  // Auto-expand the group containing this version if it's collapsed
+  if (v.group && collapsedGroups.has(v.group)) {
+    collapsedGroups.delete(v.group);
+    renderHistoryBody();
+  }
+  const body = historyDrawer.querySelector('#historyBody');
+  if (!body) return;
+  // Clear previous highlight
+  body.querySelectorAll('.history-item.ts-active').forEach(el => el.classList.remove('ts-active'));
+  const key = `${v.time}||${v.desc}`;
+  const el = body.querySelector(`.history-item[data-vkey="${CSS.escape(key)}"]`);
+  if (!el) return;
+  el.classList.add('ts-active');
+  // Wait one frame so layout (after any re-render from enterReadOnlyMode) is settled
+  requestAnimationFrame(() => {
+    try { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+  });
+}
+
+function buildAllVersions() {
+  allVersions = [];
+  // versionHistory is newest-first per group; flatten then reverse for chronological
+  versionHistory.forEach(grp => {
+    grp.items.forEach(it => allVersions.push({ ...it, group: grp.group }));
+  });
+  allVersions.reverse(); // now oldest first; current item is the last entry
+}
+
+function openScrubber() {
+  if (scrubberEl) { closeScrubber(); return; }
+  if (allVersions.length === 0) buildAllVersions();
+  scrubberEl = document.createElement('div');
+  scrubberEl.className = 'time-scrubber open';
+  scrubberEl.innerHTML = `
+    <div class="ts-header">
+      <div class="ts-header-left">
+        <button class="ts-play-btn" id="tsPlayBtn" title="Play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></button>
+        <span class="ts-title">Activity timeline</span>
+      </div>
+      <div class="ts-header-right">
+        <div class="diff-legend">
+          <span><span class="dl-swatch dl-added"></span>Just added</span>
+          <span><span class="dl-swatch dl-modified"></span>Modified</span>
+          <span><span class="dl-swatch dl-removed"></span>Removed</span>
+        </div>
+        <button class="ts-now-btn" id="tsNowBtn">Jump to current</button>
+      </div>
+    </div>
+    <div class="ts-track-wrap" id="tsTrackWrap">
+      <div class="ts-track"></div>
+      <div class="ts-track-fill" id="tsTrackFill"></div>
+      <div class="ts-thumb" id="tsThumb" tabindex="0">
+        <div class="ts-tooltip" id="tsTooltip"></div>
+      </div>
+    </div>
+    <div class="ts-ends">
+      <span>Oldest</span>
+      <span>Current</span>
+    </div>
+  `;
+  main.appendChild(scrubberEl);
+
+  // Place tick marks
+  const wrap = scrubberEl.querySelector('#tsTrackWrap');
+  const n = allVersions.length;
+  allVersions.forEach((v, i) => {
+    const tick = document.createElement('div');
+    tick.className = 'ts-tick' + (v.named ? ' named' : '');
+    tick.style.left = `${(i / (n - 1)) * 100}%`;
+    if (v.named) tick.title = `${v.version || ''} ${v.named}`;
+    wrap.appendChild(tick);
+  });
+
+  // Drag handling
+  const thumb = scrubberEl.querySelector('#tsThumb');
+  const fill = scrubberEl.querySelector('#tsTrackFill');
+  const tooltip = scrubberEl.querySelector('#tsTooltip');
+  let dragging = false;
+
+  function indexFromClientX(clientX) {
+    const rect = wrap.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.round(ratio * (n - 1));
+  }
+  function setIndex(i) {
+    const v = allVersions[i];
+    const pct = (i / (n - 1)) * 100;
+    thumb.style.left = `${pct}%`;
+    fill.style.width = `${pct}%`;
+    let actor = '';
+    if (v.actor === 'user') {
+      const u = v.actorId === 'you' ? currentUser : users.find(x => x.id === v.actorId);
+      actor = u ? u.name : '';
+    } else if (v.actor === 'automation') actor = 'Workflow';
+    else if (v.actor === 'llm') actor = 'AI agent';
+    else if (v.actor === 'data') actor = 'Data sync';
+    tooltip.innerHTML = `<span class="tt-time">${v.time}</span><span class="tt-actor">· ${actor}</span><span class="tt-desc">${v.desc.length > 50 ? v.desc.slice(0,50)+'…' : v.desc}</span>`;
+    // Trigger read-only mode (or exit if current)
+    if (v.current) {
+      if (document.body.classList.contains('readonly-mode')) exitReadOnlyMode();
+    } else {
+      enterReadOnlyMode(v);
+    }
+    highlightHistoryItemFor(v);
+  }
+  thumb.addEventListener('mousedown', (e) => { dragging = true; thumb.classList.add('dragging'); e.preventDefault(); });
+  wrap.addEventListener('mousedown', (e) => {
+    if (e.target === thumb || thumb.contains(e.target)) return;
+    setIndex(indexFromClientX(e.clientX));
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    setIndex(indexFromClientX(e.clientX));
+  });
+  document.addEventListener('mouseup', () => { if (dragging) { dragging = false; thumb.classList.remove('dragging'); } });
+
+  scrubberEl.querySelector('#tsNowBtn').addEventListener('click', () => { stopPlay(); setIndex(n - 1); });
+
+  // Play / pause auto-advance
+  const playBtn = scrubberEl.querySelector('#tsPlayBtn');
+  const playIcon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+  const pauseIcon = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+  let playTimer = null;
+  function stopPlay() {
+    if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+    playBtn.innerHTML = playIcon;
+    playBtn.title = 'Play';
+    playBtn.classList.remove('playing');
+  }
+  function startPlay() {
+    // If at the end, restart from oldest
+    let curPct = parseFloat(thumb.style.left) || 0;
+    let curIdx = Math.round((curPct / 100) * (n - 1));
+    if (curIdx >= n - 1) curIdx = 0;
+    setIndex(curIdx);
+    playBtn.innerHTML = pauseIcon;
+    playBtn.title = 'Pause';
+    playBtn.classList.add('playing');
+    function step() {
+      const pct = parseFloat(thumb.style.left) || 0;
+      const idx = Math.round((pct / 100) * (n - 1));
+      if (idx >= n - 1) { stopPlay(); return; }
+      setIndex(idx + 1);
+      playTimer = setTimeout(step, 1100);
+    }
+    playTimer = setTimeout(step, 900);
+  }
+  playBtn.addEventListener('click', () => {
+    if (playTimer) stopPlay(); else startPlay();
+  });
+  // Pause when the user starts dragging or scrubbing
+  thumb.addEventListener('mousedown', stopPlay);
+  wrap.addEventListener('mousedown', (e) => {
+    if (e.target === thumb || thumb.contains(e.target)) return;
+    stopPlay();
+  });
+  scrubberEl._stopPlay = stopPlay;
+
+  syncScrubberThumb();
+}
+function closeScrubber() {
+  if (!scrubberEl) return;
+  if (scrubberEl._stopPlay) scrubberEl._stopPlay();
+  scrubberEl.remove();
+  scrubberEl = null;
+}
+function syncScrubberThumb() {
+  if (!scrubberEl) return;
+  if (allVersions.length === 0) buildAllVersions();
+  const thumb = scrubberEl.querySelector('#tsThumb');
+  const fill = scrubberEl.querySelector('#tsTrackFill');
+  const tooltip = scrubberEl.querySelector('#tsTooltip');
+  let i = allVersions.length - 1;
+  if (viewingVersion) {
+    const found = allVersions.findIndex(v => v.time === viewingVersion.time && v.desc === viewingVersion.desc);
+    if (found !== -1) i = found;
+  }
+  const n = allVersions.length;
+  const pct = (i / (n - 1)) * 100;
+  thumb.style.left = `${pct}%`;
+  fill.style.width = `${pct}%`;
+  const v = allVersions[i];
+  let actor = '';
+  if (v.actor === 'user') {
+    const u = v.actorId === 'you' ? currentUser : users.find(x => x.id === v.actorId);
+    actor = u ? u.name : '';
+  } else if (v.actor === 'automation') actor = 'Workflow';
+  else if (v.actor === 'llm') actor = 'AI agent';
+  else if (v.actor === 'data') actor = 'Data sync';
+  tooltip.innerHTML = `<span class="tt-time">${v.time}</span><span class="tt-actor">· ${actor}</span><span class="tt-desc">${v.desc.length > 50 ? v.desc.slice(0,50)+'…' : v.desc}</span>`;
 }
 
 function restoreVersion(item) {
@@ -2579,6 +3086,21 @@ const scenes = [
     }
   },
   {
+    text: "The Activity timeline at the bottom is the visual companion to the log. Drag the thumb — or hit ▶ Play — to watch the graph build itself version by version: 🟢 added, 🟠 modified, 🔴 removed.",
+    enter() {
+      if (chatDrawer) closeChatDrawer();
+      if (!historyDrawer) openHistory(); // also opens the scrubber
+      setTimeout(() => {
+        const playBtn = document.getElementById('tsPlayBtn');
+        if (playBtn) playBtn.classList.add('pulse');
+      }, 300);
+    },
+    exit() {
+      const playBtn = document.getElementById('tsPlayBtn');
+      if (playBtn) playBtn.classList.remove('pulse');
+    }
+  },
+  {
     text: "Need to switch versions quickly? Click the graph-name chip in the sub-bar — it's a dropdown of named versions (Current, V3, V2, V1) you can jump between without opening the full log.",
     enter() {
       if (chatDrawer) closeChatDrawer();
@@ -2673,6 +3195,15 @@ function goToScene(i) {
   sceneIdx = i;
   const s = scenes[sceneIdx];
   s.enter();
+  // From step 10 onward, the focus shifts to version history — hide all teammate
+  // presence (cursors + avatar stack) so it doesn't distract from the timeline.
+  if (sceneIdx >= 9) {
+    visibleUserIds.clear();
+    visibleUserIds.add('you');
+    users.forEach(u => hideCursor(u.id));
+    renderAvatars();
+    renderPanelLists();
+  }
   sceneText.textContent = s.text;
   sceneCounter.textContent = `${sceneIdx + 1} / ${scenes.length}`;
   prevBtn.style.opacity = sceneIdx === 0 ? '.4' : '1';
